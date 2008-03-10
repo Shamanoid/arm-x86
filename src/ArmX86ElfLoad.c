@@ -2,6 +2,12 @@
 #include <stdlib.h>
 #include <errno.h>
 #include <string.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <sys/types.h>
+#include <sys/mman.h>
+#include <sys/stat.h>
+
 #include "ArmX86Debug.h"
 #include "ArmX86ElfLoad.h"
 
@@ -39,19 +45,19 @@ typedef struct programHeader_s{
 
 FILE *elf, *bin;
 
-#define READ_ELF32_HALF(elem,elf) { 	int numBytes; 					\
-					numBytes = fread((elem),1,2,elf);		\
-                                        if(numBytes < 2){				\
-                                          DP("End of File reached\n");	\
-                                        }						\
-                                  }							\
+#define READ_ELF32_HALF(elem,elf) { int numBytes; 			\
+                                    numBytes = fread((elem),1,2,elf);	\
+                                    if(numBytes < 2){			\
+                                      DP("End of File reached\n");	\
+                                    }					\
+                                  }					\
 
-#define READ_ELF32_WORD(elem,elf) { 	int numBytes;                                   \
-					numBytes = fread((elem),1,4,elf);		\
-                                        if(numBytes < 4){				\
-                                          DP("End of File reached\n");	\
-                                        }						\
-                                  }							\
+#define READ_ELF32_WORD(elem,elf) { int numBytes;                       \
+                                    numBytes = fread((elem),1,4,elf);	\
+                                    if(numBytes < 4){			\
+                                      DP("End of File reached\n");	\
+                                    }					\
+                                  }					\
 
 void parseElfHeader(FILE *elf, elfHeader_t *elfHeader){
   int numBytesRead;
@@ -110,7 +116,11 @@ void parseProgramHeader(FILE *elf, programHeader_t *programHeader){
 
 uint32_t* armX86ElfLoad(char *elfFile){
   elfHeader_t elfHeader;
-  uint32_t i;
+  uint32_t i, *instr;
+  int elfFd;
+  struct stat sBuf;
+
+  DP_HI;
 
   if((elf = fopen(elfFile,"rb")) == NULL){
     DP1("Could not open %s\n", elfFile);
@@ -143,8 +153,14 @@ uint32_t* armX86ElfLoad(char *elfFile){
     return NULL;
   }
 
+  //
+  // FIXME:
+  // When loading a program, check that it will fit in memory
+  // Determine correctly exactly when this loop will end
+  //
   for(i=0; i<elfHeader.e_phnum; i++){
-    programHeader_t *programHeader = (programHeader_t *)malloc(sizeof(programHeader_t));
+    programHeader_t *programHeader = 
+     (programHeader_t *)malloc(sizeof(programHeader_t));
     parseProgramHeader(elf, programHeader);
 
     uint32_t inst;
@@ -155,16 +171,40 @@ uint32_t* armX86ElfLoad(char *elfFile){
     }
   }
 
-  //
-  // FIXME:
-  // Determine exactly when the previous loop gets done
-  // mmap() the image file and return the pointer
-  //
-  return NULL;
-}
+  fclose(elf);
+  fclose(bin);
 
-void armX86ElfUnload(char *elfFile){
-  if(elf != NULL) fclose(elf);
-  if(bin != NULL) fclose(bin);
-}
+  if((elfFd = open(outputFileName,O_RDONLY)) == -1){
+    DP1("Unable to open image for loading: %x\n",errno);
+    return NULL;
+  }
 
+  if((stat(outputFileName, &sBuf)) == -1){
+    DP1("Unable to stat image file: %x\n",errno);
+    return NULL;
+  }
+
+  instr = (uint32_t *)mmap(
+    (caddr_t)0,
+    sBuf.st_size,
+    PROT_READ,
+    MAP_SHARED,
+    elfFd,
+    0
+  );
+
+  if(instr == (uint32_t *)-1){
+    DP1("Could not load image file to memory: %x\n",errno);
+    return NULL;
+  }
+
+  DP1("Loaded image file at 0x%p\n",instr);
+
+  if(close(elfFd) == -1){
+    DP("Failed to close image file post-loading\n");
+  }
+  free(outputFileName);  
+
+  DP_BYE;
+  return instr;
+}

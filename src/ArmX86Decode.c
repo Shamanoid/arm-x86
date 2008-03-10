@@ -59,10 +59,10 @@
 #define OPCODE_MOV              0x01A00000  // Move
 #define OPCODE_BIC              0x01C00000  // Bit clear
 #define OPCODE_MVN              0x01E00000  // Move not
-#define OPCODE_SHIFT            20
+#define OPCODE_SHIFT            21
 
-#define RD_SHIFT                11
-#define RN_SHIFT                15
+#define RD_SHIFT                12
+#define RN_SHIFT                16
 
 #define RD(x)                   (((x) & 0x000F0000) >> RD_SHIFT)
 #define RN(x)                   (((x) & 0x0000F000) >> RN_SHIFT)
@@ -80,6 +80,8 @@ void armX86Decode(uint32_t *instr){
   bool conditional = FALSE;
 
   DP_HI;
+
+  DP1("Processing instruction: 0x%x\n",*instr);
 
   //
   // First check the condition field. Set a flag in case the instruction
@@ -112,7 +114,8 @@ void armX86Decode(uint32_t *instr){
       //
       if(((*instr & 0x01900000) != 0x01000000) && 
          ((*instr & 0x00000090) != 0x00000090)){
-           (opcodeHandler[((*instr & OPCODE_MASK) >> OPCODE_SHIFT)])((void *)instr);
+           (opcodeHandler[((*instr & OPCODE_MASK) >> OPCODE_SHIFT)])
+             ((void *)instr);
       }
     break;
     case INST_TYPE_IMM_UNDEF:
