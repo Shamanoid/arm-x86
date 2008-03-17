@@ -7,7 +7,7 @@ int foo(){
   c = a + b;
   return c;
 }
-int main(){
+int _start(){
   return foo();
 }
 
