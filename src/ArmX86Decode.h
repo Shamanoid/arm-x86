@@ -1,19 +1,62 @@
-#include <stdint.h>
+#ifndef _ARMX86_DECODE_H
+#define _ARMX86_DECODE_H
 
-void armX86Decode(uint32_t *instr);
-void andHandler(void *inst);
-void eorHandler(void *inst);
-void subHandler(void *inst);
-void rsbHandler(void *inst);
-void addHandler(void *inst);
-void adcHandler(void *inst);
-void sbcHandler(void *inst);
-void rscHandler(void *inst);
-void tstHandler(void *inst);
-void teqHandler(void *inst);
-void cmpHandler(void *inst);
-void cmnHandler(void *inst);
-void orrHandler(void *inst);
-void movHandler(void *inst);
-void bicHandler(void *inst);
-void mvnHandler(void *inst);
+#include <stdint.h>
+#include "ArmX86Types.h"
+
+typedef enum {
+  LSL,
+  LSR,
+  ASR,
+  ROR,
+  RRX
+}shift_t;
+
+struct decodeInfo_t{
+  union armInstInfo_u{
+    struct {
+      uint8_t cond;
+      bool P;
+      bool U;
+      bool S;
+      bool W;
+      bool L;
+      uint8_t Rn;
+      uint16_t regList;
+    }lsmult;
+
+    struct {
+      uint8_t cond;
+      bool S;
+      uint8_t Rn;
+      uint8_t Rd;
+      uint8_t Rm;
+      shift_t shiftType;
+      uint8_t shiftImm;
+      uint8_t Rs;
+    }dpreg;
+  }armInstInfo;
+  uint8_t* pX86Addr;
+};
+
+#define OPCODE_HANDLER_RETURN   int
+void armX86Decode(uint32_t *pArmInstr, uint8_t *pX86Instr);
+OPCODE_HANDLER_RETURN andHandler(void *pInst);
+OPCODE_HANDLER_RETURN eorHandler(void *pInst);
+OPCODE_HANDLER_RETURN subHandler(void *pInst);
+OPCODE_HANDLER_RETURN rsbHandler(void *pInst);
+OPCODE_HANDLER_RETURN addHandler(void *pInst);
+OPCODE_HANDLER_RETURN adcHandler(void *pInst);
+OPCODE_HANDLER_RETURN sbcHandler(void *pInst);
+OPCODE_HANDLER_RETURN rscHandler(void *pInst);
+OPCODE_HANDLER_RETURN tstHandler(void *pInst);
+OPCODE_HANDLER_RETURN teqHandler(void *pInst);
+OPCODE_HANDLER_RETURN cmpHandler(void *pInst);
+OPCODE_HANDLER_RETURN cmnHandler(void *pInst);
+OPCODE_HANDLER_RETURN orrHandler(void *pInst);
+OPCODE_HANDLER_RETURN movHandler(void *pInst);
+OPCODE_HANDLER_RETURN bicHandler(void *pInst);
+OPCODE_HANDLER_RETURN mvnHandler(void *pInst);
+int lsmHandler(void *pInst);
+
+#endif /* _ARMX86_DECODE_H */

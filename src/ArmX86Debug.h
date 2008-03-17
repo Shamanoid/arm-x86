@@ -1,3 +1,6 @@
+#ifndef _ARMX86_DEBUG_H
+#define _ARMX86_DEBUG_H
+
 #include <stdio.h>
 #include <assert.h>
 
@@ -16,7 +19,7 @@
 #define DP_HI               DP("Enter\n"); 
 #define DP_BYE              DP("Leave\n"); 
 
-#else // DEBUG
+#else /* DEBUG */
 
 #define DP(x)
 #define DP1(x,x1)
@@ -24,4 +27,6 @@
 #define DP_HI
 #define DP_BYE
 
-#endif //DEBUG
+#endif /* DEBUG */
+
+#endif /* _ARMX86_DEBUG_H */

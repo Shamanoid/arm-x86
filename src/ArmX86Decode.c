@@ -3,10 +3,11 @@
 #include "ArmX86Decode.h"
 #include "ArmX86Types.h"
 
-#define COND_MASK               0xF0000000  // Mask for the condition field
-#define COND_AL			0xE0000000  // Condition - Always
+#define COND_MASK               0xF0000000  /* Mask for the condition field */
+#define COND_AL			0xE0000000  /* Condition - Always */
+#define COND_SHIFT              28
 
-//
+/*
 // For purposes of instruction decoding, the instructions are divided into
 // families as described here. This classification is based on the bits
 // 27 down to 25 in each instruction.
@@ -30,7 +31,7 @@
 //  8. "111" COP_SWI
 //    Coprocessor instructions
 //    Software Interrupt
-//
+*/
 #define INST_TYPE_MASK          0x0E000000  // What type of instruction?
 #define INST_TYPE_DP_MISC       0x00000000
 #define INST_TYPE_IMM_UNDEF     0x02000000
@@ -68,7 +69,27 @@
 #define RN(x)                   (((x) & 0x0000F000) >> RN_SHIFT)
 #define RM(x)                   ((x) & 0x0000000F)
 
-typedef void (*opcodeHandler_t)(void *);
+#define P_MASK                  0x01000000
+#define U_MASK                  0x00800000 
+#define S_MASK                  0x00400000
+#define W_MASK                  0x00200000
+#define L_MASK                  0x00100000
+
+#define NUM_ARM_REGISTERS       16  
+#define R13                     regFile[13]
+#define R14                     regFile[14]
+#define R15                     regFile[15]
+
+#define SP                      R13
+#define LR                      R14
+#define IP                      R15
+
+uint32_t regFile[NUM_ARM_REGISTERS] = {
+  0x0, 0x1, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7,
+  0x8, 0x9, 0xA, 0xB, 0xC, 0xD, 0xE, 0xF
+};
+
+typedef OPCODE_HANDLER_RETURN (*opcodeHandler_t)(void *inst);
 opcodeHandler_t opcodeHandler[NUM_OPCODES] = {
   andHandler, eorHandler, subHandler, rsbHandler,
   addHandler, adcHandler, sbcHandler, rscHandler,
@@ -76,130 +97,262 @@ opcodeHandler_t opcodeHandler[NUM_OPCODES] = {
   orrHandler, movHandler, bicHandler, mvnHandler
 };
 
-void armX86Decode(uint32_t *instr){
-  bool conditional = FALSE;
+#define NUM_ARM_INSTRUCTIONS    20
+#define DPREG_INFO              instInfo.armInstInfo.dpreg
+#define LSMULT_INFO             instInfo.armInstInfo.lsmult
+
+void armX86Decode(uint32_t *pArmInstr, uint8_t *pX86Instr){
+  bool bConditional = FALSE;
+  struct decodeInfo_t instInfo;
+  uint32_t armInst;
+
+  /*
+  // armInstCount is number of ARM instructions
+  // x86InstCount is number of bytes of x86 instructions
+  */
+  uint32_t x86InstCount,armInstCount;
+  uint32_t *pArmPC = pArmInstr;
+  uint8_t *pX86PC = pX86Instr;
 
   DP_HI;
 
-  DP1("Processing instruction: 0x%x\n",*instr);
+  for(armInstCount=0; armInstCount < NUM_ARM_INSTRUCTIONS; armInstCount++){
+    DP1("Processing instruction: 0x%x\n",*pArmPC);
 
-  //
-  // First check the condition field. Set a flag in case the instruction
-  // is to be executed conditionally.
-  //
-  if((*instr & COND_MASK) != COND_AL){
-    conditional = TRUE;
+    armInst = *pArmPC;
+    /*
+    // First check the condition field. Set a flag in case the instruction
+    // is to be executed conditionally.
+    */
+    if((armInst & COND_MASK) != COND_AL){
+      bConditional = TRUE;
+    }else{
+      bConditional = FALSE;
+    }
+
+    DP_ASSERT(bConditional == FALSE,"Encountered conditional instruction\n");
+
+    /*
+    // There are usually two source operands and one destination register for
+    // data processing instruction. The compare, test and move instructions
+    // are exceptions. Some of them have only one source operand and other
+    // do not have a destination register.
+    */
+
+    /*
+    // Instructions are decoded by family
+    */
+    switch(armInst & INST_TYPE_MASK){
+      case INST_TYPE_DP_MISC:
+        /*
+        // There are two conditions that help distinguish an instruction
+        // as a data processing instruction:
+        //   Bit 4 and Bit 7 should not both be '1'
+        //   In case the top two bits of the opcode are "10", the S bit
+        //   should be a '1'
+        */
+        if(((armInst & 0x01900000) != 0x01000000) && 
+           ((armInst & 0x00000090) != 0x00000090)){
+           DPREG_INFO.cond = ((armInst & COND_MASK) >> COND_SHIFT);
+           DPREG_INFO.Rn = RN(armInst);
+           DPREG_INFO.Rm = RM(armInst);
+           DPREG_INFO.Rd = RD(armInst);
+           instInfo.pX86Addr = pX86PC;
+           /*
+           // FIXME: Shift information is yet to be incorporated
+           */
+           x86InstCount = 
+             (opcodeHandler[((armInst & OPCODE_MASK) >> OPCODE_SHIFT)])
+             ((void *)&instInfo);
+           pX86PC += x86InstCount;
+        }
+      break;
+      case INST_TYPE_IMM_UNDEF:
+      break;
+      case INST_TYPE_LSIMM:
+      break;
+      case INST_TYPE_LSR_UNDEF:
+      break;
+      case INST_TYPE_LSMULT:
+        LSMULT_INFO.cond = ((armInst & COND_MASK) >> COND_SHIFT);
+        LSMULT_INFO.Rn = RN(armInst);
+        LSMULT_INFO.regList = armInst & 0x0000FFFF;
+        LSMULT_INFO.P = ((armInst & P_MASK) > 0?TRUE:FALSE);
+        LSMULT_INFO.U = ((armInst & U_MASK) > 0?TRUE:FALSE);
+        LSMULT_INFO.S = ((armInst & S_MASK) > 0?TRUE:FALSE);
+        LSMULT_INFO.W = ((armInst & W_MASK) > 0?TRUE:FALSE);
+        LSMULT_INFO.L = ((armInst & L_MASK) > 0?TRUE:FALSE);
+        instInfo.pX86Addr = pX86PC;
+        x86InstCount = lsmHandler((void *)&instInfo);
+        pX86PC += x86InstCount;
+      break;
+      case INST_TYPE_BRCH:
+      break;
+      case INST_TYPE_COPLS:
+      break;
+      case INST_TYPE_COP_SWI:
+      break;
+      default:
+      break;
+    }
+    pArmPC++;
   }
-
-  DP_ASSERT(conditional == FALSE,"Encountered conditional instruction\n");
-
-  //
-  // There are usually two source operands and one destination register for
-  // data processing instruction. The compare, test and move instructions
-  // are exceptions. Some of them have only one source operand and other
-  // do not have a destination register.
-  //
-
-  //
-  // Instructions are decoded by family
-  //
-  switch(*instr & INST_TYPE_MASK){
-    case INST_TYPE_DP_MISC:
-      //
-      // There are two conditions that help distinguish an instruction
-      // as a data processing instruction:
-      //   Bit 4 and Bit 7 should not both be '1'
-      //   In case the top two bits of the opcode are "10", the S bit
-      //   should be a '1'
-      //
-      if(((*instr & 0x01900000) != 0x01000000) && 
-         ((*instr & 0x00000090) != 0x00000090)){
-           (opcodeHandler[((*instr & OPCODE_MASK) >> OPCODE_SHIFT)])
-             ((void *)instr);
-      }
-    break;
-    case INST_TYPE_IMM_UNDEF:
-    break;
-    case INST_TYPE_LSIMM:
-    break;
-    case INST_TYPE_LSR_UNDEF:
-    break;
-    case INST_TYPE_LSMULT:
-    break;
-    case INST_TYPE_BRCH:
-    break;
-    case INST_TYPE_COPLS:
-    break;
-    case INST_TYPE_COP_SWI:
-    break;
-    default:
-    break;
-  }
-
   DP_BYE;
 }
 
-void andHandler(void *inst){
+int lsmHandler(void *pInst){
+  struct decodeInfo_t instInfo = *(struct decodeInfo_t *)pInst;
+  uint8_t count;
+
+  DP("\tLoad-Store Multiple\n");
+
+  return count;
+}
+
+OPCODE_HANDLER_RETURN
+andHandler(void *pInst){
   DP("\tand\n");
+  return 0;
 }
 
-void eorHandler(void *inst){
+OPCODE_HANDLER_RETURN
+eorHandler(void *pInst){
   DP("\teor\n");
+
+  return 0;
 }
 
-void subHandler(void *inst){
+OPCODE_HANDLER_RETURN
+subHandler(void *pInst){
   DP("\tsub\n");
+
+  return 0;
 }
 
-void rsbHandler(void *inst){
+OPCODE_HANDLER_RETURN
+rsbHandler(void *pInst){
   DP("\trsb\n");
+
+  return 0;
 }
 
-void addHandler(void *inst){
+OPCODE_HANDLER_RETURN
+addHandler(void *pInst){
   DP("\tadd\n");
+
+  return 0;
 }
 
-void adcHandler(void *inst){
+OPCODE_HANDLER_RETURN
+adcHandler(void *pInst){
   DP("\tadc\n");
+
+  return 0;
 }
 
-void sbcHandler(void *inst){
+OPCODE_HANDLER_RETURN
+sbcHandler(void *pInst){
   DP("\tsbc\n");
+
+  return 0;
 }
 
-void rscHandler(void *inst){
+OPCODE_HANDLER_RETURN
+rscHandler(void *pInst){
   DP("\trsc\n");
+
+  return 0;
 }
 
-void tstHandler(void *inst){
+OPCODE_HANDLER_RETURN
+tstHandler(void *pInst){
   DP("\ttst\n");
+
+  return 0;
 }
 
-void teqHandler(void *inst){
+OPCODE_HANDLER_RETURN
+teqHandler(void *pInst){
   DP("\tteq\n");
+
+  return 0;
 }
 
-void cmpHandler(void *inst){
+OPCODE_HANDLER_RETURN
+cmpHandler(void *pInst){
   DP("\tcmp\n");
+
+  return 0;
 }
 
-void cmnHandler(void *inst){
+OPCODE_HANDLER_RETURN
+cmnHandler(void *pInst){
   DP("\tcmn\n");
+
+  return 0;
 }
 
-void orrHandler(void *inst){
+OPCODE_HANDLER_RETURN
+orrHandler(void *pInst){
   DP("\torr\n");
+
+  return 0;
 }
 
-void movHandler(void *inst){
+#define X86_OP_MOV_TO_EAX      0xA1
+#define X86_OP_MOV_FROM_EAX    0xA3
+
+OPCODE_HANDLER_RETURN
+movHandler(void *pInst){
+  uint8_t count = 0;
+  struct decodeInfo_t instInfo = *(struct decodeInfo_t*)pInst;
+
   DP("\tmov\n");
+
+  *((uint8_t *)instInfo.pX86Addr + count) = X86_OP_MOV_TO_EAX;
+  count++;
+  *(uint32_t *)(instInfo.pX86Addr + count) = (uintptr_t)&regFile[DPREG_INFO.Rd];
+  count+=4;
+  *((uint8_t *)instInfo.pX86Addr + count) = X86_OP_MOV_FROM_EAX;
+  count++;
+  *(uint32_t *)(instInfo.pX86Addr + count) = (uintptr_t)&regFile[DPREG_INFO.Rn];
+  count+=4;
+
+  count = IP + SP;
+
+  return count;
 }
 
-void bicHandler(void *inst){
+OPCODE_HANDLER_RETURN
+bicHandler(void *pInst){
   DP("\tbic\n");
+
+  return 0;
 }
 
-void mvnHandler(void *inst){
+OPCODE_HANDLER_RETURN
+mvnHandler(void *pInst){
   DP("\tmvn\n");
+
+  return 0;
 }
 
+/*****************************************************************************
+This is a list of typical ARM instructions and their planned mapping to X86
+instructions.
+------------------------------------------------------------------------------
+ARM			X86			Notes
+------------------------------------------------------------------------------
+mov ip, sp		mov %eax,<addr1>	Move the contents of IP to SP.
+			mov <addr2>,%eax	Both of these are global vars
+						as far as the x86 instruction
+						instruction is concerned.	
+stmdb sp!,{...}
+ldmia sp,{...}
+ldr
+str
+sub
+mov
+add
+bl
+*****************************************************************************/
