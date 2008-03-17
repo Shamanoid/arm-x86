@@ -64,16 +64,19 @@
 
 #define RD_SHIFT                12
 #define RN_SHIFT                16
+#define RS_SHIFT                8
 
 #define RD(x)                   (((x) & 0x000F0000) >> RD_SHIFT)
 #define RN(x)                   (((x) & 0x0000F000) >> RN_SHIFT)
+#define RS(x)                   (((x) & 0x00000F00) >> RS_SHIFT)
 #define RM(x)                   ((x) & 0x0000000F)
+#define ROTATE(x)               RS(x)
 
-#define P_MASK                  0x01000000
-#define U_MASK                  0x00800000 
-#define S_MASK                  0x00400000
-#define W_MASK                  0x00200000
-#define L_MASK                  0x00100000
+#define BIT24_MASK              0x01000000
+#define BIT23_MASK              0x00800000 
+#define BIT22_MASK              0x00400000
+#define BIT21_MASK              0x00200000
+#define BIT20_MASK              0x00100000
 
 #define NUM_ARM_REGISTERS       16  
 #define R13                     regFile[13]
@@ -99,6 +102,7 @@ opcodeHandler_t opcodeHandler[NUM_OPCODES] = {
 
 #define NUM_ARM_INSTRUCTIONS    20
 #define DPREG_INFO              instInfo.armInstInfo.dpreg
+#define DPIMM_INFO              instInfo.armInstInfo.dpimm
 #define LSMULT_INFO             instInfo.armInstInfo.lsmult
 
 void armX86Decode(uint32_t *pArmInstr, uint8_t *pX86Instr){
@@ -152,22 +156,38 @@ void armX86Decode(uint32_t *pArmInstr, uint8_t *pX86Instr){
         //   should be a '1'
         */
         if(((armInst & 0x01900000) != 0x01000000) && 
-           ((armInst & 0x00000090) != 0x00000090)){
-           DPREG_INFO.cond = ((armInst & COND_MASK) >> COND_SHIFT);
-           DPREG_INFO.Rn = RN(armInst);
-           DPREG_INFO.Rm = RM(armInst);
-           DPREG_INFO.Rd = RD(armInst);
-           instInfo.pX86Addr = pX86PC;
-           /*
-           // FIXME: Shift information is yet to be incorporated
-           */
-           x86InstCount = 
-             (opcodeHandler[((armInst & OPCODE_MASK) >> OPCODE_SHIFT)])
-             ((void *)&instInfo);
-           pX86PC += x86InstCount;
+          ((armInst & 0x00000090) != 0x00000090)){
+          DPREG_INFO.cond = ((armInst & COND_MASK) >> COND_SHIFT);
+          DPREG_INFO.Rn = RN(armInst);
+          DPREG_INFO.Rm = RM(armInst);
+          DPREG_INFO.Rd = RD(armInst);
+          DPREG_INFO.S = ((armInst & BIT20_MASK) > 0?TRUE:FALSE);
+          instInfo.pX86Addr = pX86PC;
+          instInfo.immediate = FALSE;
+          /*
+          // FIXME: Shift information is yet to be incorporated
+          */
+          x86InstCount = 
+            (opcodeHandler[((armInst & OPCODE_MASK) >> OPCODE_SHIFT)])
+            ((void *)&instInfo);
+          pX86PC += x86InstCount;
         }
       break;
       case INST_TYPE_IMM_UNDEF:
+        if((armInst & 0x01900000) != 0x01000000){
+          DPIMM_INFO.cond = ((armInst & COND_MASK) >> COND_SHIFT);
+          DPIMM_INFO.Rn = RN(armInst);
+          DPIMM_INFO.Rd = RD(armInst);
+          DPIMM_INFO.rotate = ROTATE(armInst);
+          DPIMM_INFO.imm = (armInst & 0x000000FF);
+          DPIMM_INFO.S = ((armInst & BIT20_MASK) >0?TRUE:FALSE);
+          instInfo.pX86Addr = pX86PC;
+          instInfo.immediate = TRUE;
+          x86InstCount = 
+            (opcodeHandler[((armInst & OPCODE_MASK) >> OPCODE_SHIFT)])
+            ((void *)&instInfo);
+          pX86PC += x86InstCount;
+        }
       break;
       case INST_TYPE_LSIMM:
       break;
@@ -177,11 +197,11 @@ void armX86Decode(uint32_t *pArmInstr, uint8_t *pX86Instr){
         LSMULT_INFO.cond = ((armInst & COND_MASK) >> COND_SHIFT);
         LSMULT_INFO.Rn = RN(armInst);
         LSMULT_INFO.regList = armInst & 0x0000FFFF;
-        LSMULT_INFO.P = ((armInst & P_MASK) > 0?TRUE:FALSE);
-        LSMULT_INFO.U = ((armInst & U_MASK) > 0?TRUE:FALSE);
-        LSMULT_INFO.S = ((armInst & S_MASK) > 0?TRUE:FALSE);
-        LSMULT_INFO.W = ((armInst & W_MASK) > 0?TRUE:FALSE);
-        LSMULT_INFO.L = ((armInst & L_MASK) > 0?TRUE:FALSE);
+        LSMULT_INFO.P = ((armInst & BIT24_MASK) > 0?TRUE:FALSE);
+        LSMULT_INFO.U = ((armInst & BIT23_MASK) > 0?TRUE:FALSE);
+        LSMULT_INFO.S = ((armInst & BIT22_MASK) > 0?TRUE:FALSE);
+        LSMULT_INFO.W = ((armInst & BIT21_MASK) > 0?TRUE:FALSE);
+        LSMULT_INFO.L = ((armInst & BIT20_MASK) > 0?TRUE:FALSE);
         instInfo.pX86Addr = pX86PC;
         x86InstCount = lsmHandler((void *)&instInfo);
         pX86PC += x86InstCount;
@@ -211,90 +231,181 @@ int lsmHandler(void *pInst){
 
 OPCODE_HANDLER_RETURN
 andHandler(void *pInst){
-  DP("\tand\n");
+  struct decodeInfo_t instInfo = *(struct decodeInfo_t*)pInst;
+
+  if(instInfo.immediate == FALSE){
+    DP("\tRegister ");
+  }else{
+    DP("\tImmediate ");
+  }
+  printf("and\n");
   return 0;
 }
 
 OPCODE_HANDLER_RETURN
 eorHandler(void *pInst){
-  DP("\teor\n");
+  struct decodeInfo_t instInfo = *(struct decodeInfo_t*)pInst;
+
+  if(instInfo.immediate == FALSE){
+    DP("\tRegister ");
+  }else{
+    DP("\tImmediate ");
+  }
+  printf("eor\n");
 
   return 0;
 }
 
 OPCODE_HANDLER_RETURN
 subHandler(void *pInst){
-  DP("\tsub\n");
+  struct decodeInfo_t instInfo = *(struct decodeInfo_t*)pInst;
+
+  if(instInfo.immediate == FALSE){
+    DP("\tRegister ");
+  }else{
+    DP("\tImmediate ");
+  }
+  printf("sub\n");
 
   return 0;
 }
 
 OPCODE_HANDLER_RETURN
 rsbHandler(void *pInst){
-  DP("\trsb\n");
+  struct decodeInfo_t instInfo = *(struct decodeInfo_t*)pInst;
+
+  if(instInfo.immediate == FALSE){
+    DP("\tRegister ");
+  }else{
+    DP("\tImmediate ");
+  }
+  printf("rsb\n");
 
   return 0;
 }
 
 OPCODE_HANDLER_RETURN
 addHandler(void *pInst){
-  DP("\tadd\n");
+  struct decodeInfo_t instInfo = *(struct decodeInfo_t*)pInst;
+
+  if(instInfo.immediate == FALSE){
+    DP("\tRegister ");
+  }else{
+    DP("\tImmediate ");
+  }
+  printf("add\n");
 
   return 0;
 }
 
 OPCODE_HANDLER_RETURN
 adcHandler(void *pInst){
-  DP("\tadc\n");
+  struct decodeInfo_t instInfo = *(struct decodeInfo_t*)pInst;
+
+  if(instInfo.immediate == FALSE){
+    DP("\tRegister ");
+  }else{
+    DP("\tImmediate ");
+  }
+  printf("adc\n");
 
   return 0;
 }
 
 OPCODE_HANDLER_RETURN
 sbcHandler(void *pInst){
-  DP("\tsbc\n");
+  struct decodeInfo_t instInfo = *(struct decodeInfo_t*)pInst;
+
+  if(instInfo.immediate == FALSE){
+    DP("\tRegister ");
+  }else{
+    DP("\tImmediate ");
+  }
+  printf("sbc\n");
 
   return 0;
 }
 
 OPCODE_HANDLER_RETURN
 rscHandler(void *pInst){
-  DP("\trsc\n");
+  struct decodeInfo_t instInfo = *(struct decodeInfo_t*)pInst;
+
+  if(instInfo.immediate == FALSE){
+    DP("\tRegister ");
+  }else{
+    DP("\tImmediate ");
+  }
+  printf("rsc\n");
 
   return 0;
 }
 
 OPCODE_HANDLER_RETURN
 tstHandler(void *pInst){
-  DP("\ttst\n");
+  struct decodeInfo_t instInfo = *(struct decodeInfo_t*)pInst;
+
+  if(instInfo.immediate == FALSE){
+    DP("\tRegister ");
+  }else{
+    DP("\tImmediate ");
+  }
+  printf("tst\n");
 
   return 0;
 }
 
 OPCODE_HANDLER_RETURN
 teqHandler(void *pInst){
-  DP("\tteq\n");
+  struct decodeInfo_t instInfo = *(struct decodeInfo_t*)pInst;
+
+  if(instInfo.immediate == FALSE){
+    DP("\tRegister ");
+  }else{
+    DP("\tImmediate ");
+  }
+  printf("teq\n");
 
   return 0;
 }
 
 OPCODE_HANDLER_RETURN
 cmpHandler(void *pInst){
-  DP("\tcmp\n");
+  struct decodeInfo_t instInfo = *(struct decodeInfo_t*)pInst;
+
+  if(instInfo.immediate == FALSE){
+    DP("\tRegister ");
+  }else{
+    DP("\tImmediate ");
+  }
+  printf("cmp\n");
 
   return 0;
 }
 
 OPCODE_HANDLER_RETURN
 cmnHandler(void *pInst){
-  DP("\tcmn\n");
+  struct decodeInfo_t instInfo = *(struct decodeInfo_t*)pInst;
+
+  if(instInfo.immediate == FALSE){
+    DP("\tRegister ");
+  }else{
+    DP("\tImmediate ");
+  }
+  printf("cmn\n");
 
   return 0;
 }
 
 OPCODE_HANDLER_RETURN
 orrHandler(void *pInst){
-  DP("\torr\n");
+  struct decodeInfo_t instInfo = *(struct decodeInfo_t*)pInst;
+
+  if(instInfo.immediate == FALSE){
+    DP("\tRegister ");
+  }else{
+    DP("\tImmediate ");
+  }
+  printf("orr\n");
 
   return 0;
 }
@@ -307,7 +418,12 @@ movHandler(void *pInst){
   uint8_t count = 0;
   struct decodeInfo_t instInfo = *(struct decodeInfo_t*)pInst;
 
-  DP("\tmov\n");
+  if(instInfo.immediate == FALSE){
+    DP("\tRegister ");
+  }else{
+    DP("\tImmediate ");
+  }
+  printf("mov\n");
 
   *((uint8_t *)instInfo.pX86Addr + count) = X86_OP_MOV_TO_EAX;
   count++;
@@ -325,14 +441,28 @@ movHandler(void *pInst){
 
 OPCODE_HANDLER_RETURN
 bicHandler(void *pInst){
-  DP("\tbic\n");
+  struct decodeInfo_t instInfo = *(struct decodeInfo_t*)pInst;
+
+  if(instInfo.immediate == FALSE){
+    DP("\tRegister ");
+  }else{
+    DP("\tImmediate ");
+  }
+  printf("bic\n");
 
   return 0;
 }
 
 OPCODE_HANDLER_RETURN
 mvnHandler(void *pInst){
-  DP("\tmvn\n");
+  struct decodeInfo_t instInfo = *(struct decodeInfo_t*)pInst;
+
+  if(instInfo.immediate == FALSE){
+    DP("\tRegister ");
+  }else{
+    DP("\tImmediate ");
+  }
+  printf("mvn\n");
 
   return 0;
 }

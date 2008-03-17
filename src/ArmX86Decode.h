@@ -32,10 +32,21 @@ struct decodeInfo_t{
       uint8_t Rd;
       uint8_t Rm;
       shift_t shiftType;
-      uint8_t shiftImm;
+      uint8_t shiftAmt;
       uint8_t Rs;
+      bool shiftImm; /* True => Imm Shift, False => Reg shift */
     }dpreg;
+
+    struct {
+      uint8_t cond;
+      bool S;
+      uint8_t Rn;
+      uint8_t Rd;
+      uint8_t rotate;
+      uint8_t imm;
+    }dpimm;
   }armInstInfo;
+  bool immediate; /* True => DPIMM */
   uint8_t* pX86Addr;
 };
 
