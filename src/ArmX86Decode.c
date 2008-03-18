@@ -71,6 +71,10 @@
 #define RS(x)                   (((x) & 0x00000F00) >> RS_SHIFT)
 #define RM(x)                   ((x) & 0x0000000F)
 #define ROTATE(x)               RS(x)
+#define SHIFT_AMT_MASK          0x00000F80
+#define SHIFT_AMT_SHIFT         7
+#define SHIFT_TYPE_MASK         0x00000060
+#define SHIFT_TYPE_SHIFT        5
 
 #define BIT24_MASK              0x01000000
 #define BIT23_MASK              0x00800000 
@@ -104,6 +108,8 @@ opcodeHandler_t opcodeHandler[NUM_OPCODES] = {
 #define DPREG_INFO              instInfo.armInstInfo.dpreg
 #define DPIMM_INFO              instInfo.armInstInfo.dpimm
 #define LSMULT_INFO             instInfo.armInstInfo.lsmult
+#define LSREG_INFO              instInfo.armInstInfo.lsreg
+#define LSIMM_INFO              instInfo.armInstInfo.lsimm
 
 void armX86Decode(uint32_t *pArmInstr, uint8_t *pX86Instr){
   bool bConditional = FALSE;
@@ -164,13 +170,22 @@ void armX86Decode(uint32_t *pArmInstr, uint8_t *pX86Instr){
           DPREG_INFO.S = ((armInst & BIT20_MASK) > 0?TRUE:FALSE);
           instInfo.pX86Addr = pX86PC;
           instInfo.immediate = FALSE;
-          /*
-          // FIXME: Shift information is yet to be incorporated
-          */
+          DPREG_INFO.shiftType = 
+            ((armInst & SHIFT_TYPE_MASK) >> SHIFT_TYPE_SHIFT);
+          if((armInst & 0x00000010) == 0){
+            DPREG_INFO.shiftAmt = 
+              ((armInst & SHIFT_AMT_MASK) >> SHIFT_AMT_SHIFT);
+            DPREG_INFO.shiftImm = TRUE;
+          }else{
+            DPREG_INFO.Rs = RS(armInst);
+            DPREG_INFO.shiftImm = FALSE;
+          }
           x86InstCount = 
             (opcodeHandler[((armInst & OPCODE_MASK) >> OPCODE_SHIFT)])
             ((void *)&instInfo);
           pX86PC += x86InstCount;
+        }else{
+          UNSUPPORTED;
         }
       break;
       case INST_TYPE_IMM_UNDEF:
@@ -187,11 +202,42 @@ void armX86Decode(uint32_t *pArmInstr, uint8_t *pX86Instr){
             (opcodeHandler[((armInst & OPCODE_MASK) >> OPCODE_SHIFT)])
             ((void *)&instInfo);
           pX86PC += x86InstCount;
+        }else{
+          UNSUPPORTED;
         }
       break;
       case INST_TYPE_LSIMM:
+        LSIMM_INFO.cond = ((armInst & COND_MASK) >> COND_SHIFT);
+        LSIMM_INFO.P = ((armInst & BIT24_MASK) > 0?TRUE:FALSE);
+        LSIMM_INFO.U = ((armInst & BIT23_MASK) > 0?TRUE:FALSE);
+        LSIMM_INFO.B = ((armInst & BIT22_MASK) > 0?TRUE:FALSE);
+        LSIMM_INFO.W = ((armInst & BIT21_MASK) > 0?TRUE:FALSE);
+        LSIMM_INFO.L = ((armInst & BIT20_MASK) > 0?TRUE:FALSE);
+        LSIMM_INFO.Rn = RN(armInst);
+        LSIMM_INFO.Rd = RD(armInst);
+        LSIMM_INFO.imm = (armInst & 0x00000FFF);
+        instInfo.pX86Addr = pX86PC;
+        x86InstCount = lsimmHandler((void *)&instInfo);
+        pX86PC += x86InstCount;
       break;
       case INST_TYPE_LSR_UNDEF:
+        if((armInst & 0x00000010) == 0){
+          LSREG_INFO.cond = ((armInst & COND_MASK) >> COND_SHIFT);
+          LSREG_INFO.P = ((armInst & BIT24_MASK) > 0?TRUE:FALSE);
+          LSREG_INFO.U = ((armInst & BIT23_MASK) > 0?TRUE:FALSE);
+          LSREG_INFO.B = ((armInst & BIT22_MASK) > 0?TRUE:FALSE);
+          LSREG_INFO.W = ((armInst & BIT21_MASK) > 0?TRUE:FALSE);
+          LSREG_INFO.L = ((armInst & BIT20_MASK) > 0?TRUE:FALSE);
+          LSREG_INFO.Rn = RN(armInst);
+          LSREG_INFO.Rm = RM(armInst);
+          LSREG_INFO.Rd = RD(armInst);
+          LSREG_INFO.shiftAmt = 
+            ((armInst & SHIFT_AMT_MASK) >> SHIFT_AMT_SHIFT);
+          LSREG_INFO.shiftType = 
+            ((armInst & SHIFT_TYPE_MASK) >> SHIFT_TYPE_SHIFT);
+        }else{
+          UNSUPPORTED;
+        }
       break;
       case INST_TYPE_LSMULT:
         LSMULT_INFO.cond = ((armInst & COND_MASK) >> COND_SHIFT);
@@ -209,10 +255,13 @@ void armX86Decode(uint32_t *pArmInstr, uint8_t *pX86Instr){
       case INST_TYPE_BRCH:
       break;
       case INST_TYPE_COPLS:
+        UNSUPPORTED;
       break;
       case INST_TYPE_COP_SWI:
+        UNSUPPORTED;
       break;
       default:
+        UNSUPPORTED;
       break;
     }
     pArmPC++;
@@ -225,6 +274,24 @@ int lsmHandler(void *pInst){
   uint8_t count;
 
   DP("\tLoad-Store Multiple\n");
+
+  return count;
+}
+
+int lsimmHandler(void *pInst){
+  struct decodeInfo_t instInfo = *(struct decodeInfo_t *)pInst;
+  uint8_t count;
+
+  DP("\tLoad-Store Immediate\n");
+
+  return count;
+}
+
+int lsregHandler(void *pInst){
+  struct decodeInfo_t instInfo = *(struct decodeInfo_t *)pInst;
+  uint8_t count;
+
+  DP("\tLoad-Store Register-Shift\n");
 
   return count;
 }

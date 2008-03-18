@@ -2,8 +2,10 @@
 #define _ARMX86_DECODE_H
 
 #include <stdint.h>
+#include <assert.h>
 #include "ArmX86Types.h"
 
+#define UNSUPPORTED              DP_ASSERT(0,"Unsupported ARM instruction\n")
 typedef enum {
   LSL,
   LSR,
@@ -45,6 +47,32 @@ struct decodeInfo_t{
       uint8_t rotate;
       uint8_t imm;
     }dpimm;
+
+    struct {
+      uint8_t cond;
+      bool P;
+      bool U;
+      bool B;
+      bool W;
+      bool L;
+      uint8_t Rn;
+      uint8_t Rd;
+      uint8_t Rm;
+      shift_t shiftType;
+      uint8_t shiftAmt;
+    }lsreg;
+    
+    struct {
+      uint8_t cond;
+      bool P;
+      bool U;
+      bool B;
+      bool W;
+      bool L;
+      uint8_t Rn;
+      uint8_t Rd;
+      uint16_t imm;
+    }lsimm;
   }armInstInfo;
   bool immediate; /* True => DPIMM */
   uint8_t* pX86Addr;
@@ -69,5 +97,7 @@ OPCODE_HANDLER_RETURN movHandler(void *pInst);
 OPCODE_HANDLER_RETURN bicHandler(void *pInst);
 OPCODE_HANDLER_RETURN mvnHandler(void *pInst);
 int lsmHandler(void *pInst);
+int lsimmHandler(void *pInst);
+int lsregHandler(void *pInst);
 
 #endif /* _ARMX86_DECODE_H */
