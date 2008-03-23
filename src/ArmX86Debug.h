@@ -17,6 +17,8 @@
 
 #define DP(x)               print(x)
 #define DP1(x,x1)           print1((x),(x1))
+#define DP2(x,x1,x2)        print2((x),(x1),(x2))
+#define DP3(x,x1,x2,x3)     print3((x),(x1),(x2),(x3))
 #define DP_HI               DP("Enter\n"); 
 #define DP_BYE              DP("Leave\n"); 
 
@@ -24,6 +26,8 @@
 
 #define DP(x)
 #define DP1(x,x1)
+#define DP2(x,x1,x2)
+#define DP3(x,x1,x2,x3)
 #define DP_HI
 #define DP_BYE
 
