@@ -194,7 +194,7 @@ uint32_t* armX86ElfLoad(char *elfFile){
   }
 
   instr = (uint32_t *)mmap(
-    (caddr_t)0,
+    (caddr_t)0x00008000,
     sBuf.st_size,
     PROT_READ,
     MAP_SHARED,
