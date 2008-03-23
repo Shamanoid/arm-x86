@@ -66,8 +66,8 @@
 #define RN_SHIFT                16
 #define RS_SHIFT                8
 
-#define RD(x)                   (((x) & 0x000F0000) >> RD_SHIFT)
-#define RN(x)                   (((x) & 0x0000F000) >> RN_SHIFT)
+#define RD(x)                   (((x) & 0x0000F000) >> RD_SHIFT)
+#define RN(x)                   (((x) & 0x000F0000) >> RN_SHIFT)
 #define RS(x)                   (((x) & 0x00000F00) >> RS_SHIFT)
 #define RM(x)                   ((x) & 0x0000000F)
 #define ROTATE(x)               RS(x)
@@ -92,8 +92,10 @@
 #define IP                      R15
 
 uint32_t regFile[NUM_ARM_REGISTERS] = {
-  0x0, 0x1, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7,
-  0x8, 0x9, 0xA, 0xB, 0xC, 0xD, 0xE, 0xF
+  0x80000, 0x80000, 0x80000, 0x80000,
+  0x80000, 0x80000, 0x80000, 0x80000,
+  0x80000, 0x80000, 0x80000, 0x80000,
+  0x80000, 0x80000, 0x80000, 0x80000
 };
 
 typedef OPCODE_HANDLER_RETURN (*opcodeHandler_t)(void *inst);
@@ -111,6 +113,17 @@ opcodeHandler_t opcodeHandler[NUM_OPCODES] = {
 #define LSREG_INFO              instInfo.armInstInfo.lsreg
 #define LSIMM_INFO              instInfo.armInstInfo.lsimm
 
+typedef void (*translator)(void);
+
+#define LOG_INSTR(addr,count) { \
+  int i;                        \
+  printf("%p: ",addr);          \
+  for(i=0; i<(count); i++){     \
+    printf(" %x",*((addr)+i));  \
+  }                             \
+  printf("\n");                 \
+}                               \
+
 void armX86Decode(uint32_t *pArmInstr, uint8_t *pX86Instr){
   bool bConditional = FALSE;
   struct decodeInfo_t instInfo;
@@ -123,9 +136,13 @@ void armX86Decode(uint32_t *pArmInstr, uint8_t *pX86Instr){
   uint32_t x86InstCount,armInstCount;
   uint32_t *pArmPC = pArmInstr;
   uint8_t *pX86PC = pX86Instr;
+  translator x86Translator = (translator)pX86Instr;
 
   DP_HI;
 
+  DP1("x86PC = %p\n",pX86PC);
+
+  regFile[0] = (uintptr_t)&regFile[15];
   for(armInstCount=0; armInstCount < NUM_ARM_INSTRUCTIONS; armInstCount++){
     DP1("Processing instruction: 0x%x\n",*pArmPC);
 
@@ -235,6 +252,9 @@ void armX86Decode(uint32_t *pArmInstr, uint8_t *pX86Instr){
             ((armInst & SHIFT_AMT_MASK) >> SHIFT_AMT_SHIFT);
           LSREG_INFO.shiftType = 
             ((armInst & SHIFT_TYPE_MASK) >> SHIFT_TYPE_SHIFT);
+          instInfo.pX86Addr = pX86PC;
+          x86InstCount = lsmHandler((void *)&instInfo);
+          pX86PC += x86InstCount;
         }else{
           UNSUPPORTED;
         }
@@ -266,30 +286,112 @@ void armX86Decode(uint32_t *pArmInstr, uint8_t *pX86Instr){
     }
     pArmPC++;
   }
+  
+  /*
+  // For the moment, I insert a return following the last instruction
+  // that is in the translation cache. Then I make a call to the
+  // start of the translation cache.
+  */
+  DP1("x86PC = %p\n",pX86PC);
+  *pX86PC = 0xC3;
+
+  int i;
+  for(i=0; i< 16; i++){
+    if(i>0 && ((i%4) == 0)) printf("\n");
+    printf("R[%d] = %d\t",i, regFile[i]);
+  }
+  printf("\n");
+
+  x86Translator();
+
+  for(i=0; i< 16; i++){
+    if(i>0 && ((i%4) == 0)) printf("\n");
+    printf("R[%d] = %d\t",i, regFile[i]);
+  }
+  printf("\n");
+  
   DP_BYE;
 }
 
-int lsmHandler(void *pInst){
-  struct decodeInfo_t instInfo = *(struct decodeInfo_t *)pInst;
-  uint8_t count;
 
-  DP("\tLoad-Store Multiple\n");
+#define X86_OP_MOV_TO_EAX       0xA1
+#define X86_OP_MOV_FROM_EAX     0xA3
+#define X86_OP_SUB32_FROM_EAX   0x2D
+#define X86_OP_MEM32_FROM_EAX   0x2B
+#define X86_OP_MOV_TO_REG       0x8B
+#define X86_OP_MOV_FROM_REG     0x89
+
+/*
+// A couple of convenience macros to help insert code into the translation
+// cache while keeping the code readable.
+*/
+#define ADD_BYTE(x)                                     \
+  *((uint8_t *)instInfo.pX86Addr + count) = (x);        \
+  count++;                                              \
+
+#define ADD_WORD(x)                                     \
+  *(uint32_t *)(instInfo.pX86Addr + count) = (x);       \
+  count+=4;                                             \
+
+int lsmHandler(void *pInst){
+  struct decodeInfo_t instInfo __attribute__((unused))
+    = *(struct decodeInfo_t *)pInst;
+  uint8_t count = 0;
+
+  DP("Load-Store Multiple\n");
 
   return count;
 }
 
 int lsimmHandler(void *pInst){
   struct decodeInfo_t instInfo = *(struct decodeInfo_t *)pInst;
-  uint8_t count;
+  uint8_t count = 0;
 
   DP("\tLoad-Store Immediate\n");
+
+  DP_ASSERT(LSIMM_INFO.B != 1, "Byte transfer not supported\n");
+  DP_ASSERT(LSIMM_INFO.P != 0, "Post-Indexed addressing not supported\n");
+  DP_ASSERT(LSIMM_INFO.W != 1, "Pre-Indexed addressing not supported\n");
+
+  if(LSIMM_INFO.L == 1){
+    DP("Load ");
+    printf("Rd = %d, Rn = %d\n",LSIMM_INFO.Rd, LSIMM_INFO.Rn);
+
+    ADD_BYTE(X86_OP_MOV_TO_REG);
+    ADD_BYTE(0x15) /* MODR/M - Mov from disp32 to edx */
+    ADD_WORD((uintptr_t)&regFile[LSIMM_INFO.Rn]);
+
+    ADD_BYTE(X86_OP_MOV_TO_REG);
+    ADD_BYTE(0x82) /* MODR/M - Mov from edx + disp32 to eax */
+    ADD_WORD((int32_t)LSIMM_INFO.imm * (LSIMM_INFO.U == 0?-1:1));
+
+    ADD_BYTE(X86_OP_MOV_FROM_EAX);
+    ADD_WORD((uintptr_t)&regFile[LSIMM_INFO.Rd]);
+    LOG_INSTR(instInfo.pX86Addr,count);
+  }else{
+    DP("Store ");
+    printf("Rd = %d, Rn = %d\n",LSIMM_INFO.Rd, LSIMM_INFO.Rn);
+
+    ADD_BYTE(X86_OP_MOV_TO_REG);
+    ADD_BYTE(0x15) /* MODR/M - Mov from disp32 to edx */
+    ADD_WORD((uintptr_t)&regFile[LSIMM_INFO.Rn]);
+
+    ADD_BYTE(X86_OP_MOV_TO_EAX);
+    ADD_WORD((uintptr_t)&regFile[LSIMM_INFO.Rd]);
+
+    ADD_BYTE(X86_OP_MOV_FROM_REG);
+    ADD_BYTE(0x82) /* MODR/M - Mov from eaz to  edx + disp32 */
+    ADD_WORD((int32_t)LSIMM_INFO.imm * (LSIMM_INFO.U == 0?-1:1));
+    LOG_INSTR(instInfo.pX86Addr,count);
+  }
 
   return count;
 }
 
 int lsregHandler(void *pInst){
-  struct decodeInfo_t instInfo = *(struct decodeInfo_t *)pInst;
-  uint8_t count;
+  struct decodeInfo_t instInfo __attribute__((unused))
+    = *(struct decodeInfo_t *)pInst;
+  uint8_t count = 0;
 
   DP("\tLoad-Store Register-Shift\n");
 
@@ -305,7 +407,7 @@ andHandler(void *pInst){
   }else{
     DP("\tImmediate ");
   }
-  printf("and\n");
+
   return 0;
 }
 
@@ -318,7 +420,6 @@ eorHandler(void *pInst){
   }else{
     DP("\tImmediate ");
   }
-  printf("eor\n");
 
   return 0;
 }
@@ -326,15 +427,49 @@ eorHandler(void *pInst){
 OPCODE_HANDLER_RETURN
 subHandler(void *pInst){
   struct decodeInfo_t instInfo = *(struct decodeInfo_t*)pInst;
+  uint8_t count = 0;
 
   if(instInfo.immediate == FALSE){
-    DP("\tRegister ");
-  }else{
-    DP("\tImmediate ");
-  }
-  printf("sub\n");
+    DP("Register ");
+    printf("\tRN = %d\nRD = %d\n",DPREG_INFO.Rn, DPREG_INFO.Rd);
 
-  return 0;
+    ADD_BYTE(X86_OP_MOV_TO_EAX);
+    ADD_WORD((uintptr_t)&regFile[DPREG_INFO.Rn]);
+
+    ADD_BYTE(X86_OP_MEM32_FROM_EAX);
+    ADD_BYTE(0x05); /* MODR/M */
+    ADD_WORD((uintptr_t)&regFile[DPREG_INFO.Rm]);
+
+    ADD_BYTE(X86_OP_MOV_FROM_EAX);
+    ADD_WORD((uintptr_t)&regFile[DPREG_INFO.Rd]);
+    LOG_INSTR(instInfo.pX86Addr,count);
+
+    if(DPREG_INFO.shiftAmt != 0){ 
+      UNSUPPORTED;
+    }
+  }else{
+    DP("Immediate ");
+    printf("RN = %d, RD = %d\n",DPIMM_INFO.Rn, DPIMM_INFO.Rd);
+
+    ADD_BYTE(X86_OP_MOV_TO_EAX);
+    ADD_WORD((uintptr_t)&regFile[DPIMM_INFO.Rn]);
+
+    ADD_BYTE(X86_OP_SUB32_FROM_EAX);
+    ADD_WORD((uint32_t)DPIMM_INFO.imm);
+
+    ADD_BYTE(X86_OP_MOV_FROM_EAX);
+    ADD_WORD((uintptr_t)&regFile[DPIMM_INFO.Rd]);
+    LOG_INSTR(instInfo.pX86Addr,count);
+
+    if(DPIMM_INFO.rotate != 0){ 
+      UNSUPPORTED;
+    }
+  }
+  if(DPREG_INFO.S == 0){
+    DP(" WARNING -> Updating FLAGS when prohibited\n");
+  }
+
+  return count;
 }
 
 OPCODE_HANDLER_RETURN
@@ -342,11 +477,10 @@ rsbHandler(void *pInst){
   struct decodeInfo_t instInfo = *(struct decodeInfo_t*)pInst;
 
   if(instInfo.immediate == FALSE){
-    DP("\tRegister ");
+    DP("Register\n");
   }else{
-    DP("\tImmediate ");
+    DP("Immediate\n");
   }
-  printf("rsb\n");
 
   return 0;
 }
@@ -356,11 +490,10 @@ addHandler(void *pInst){
   struct decodeInfo_t instInfo = *(struct decodeInfo_t*)pInst;
 
   if(instInfo.immediate == FALSE){
-    DP("\tRegister ");
+    DP("Register\n");
   }else{
-    DP("\tImmediate ");
+    DP("Immediate\n");
   }
-  printf("add\n");
 
   return 0;
 }
@@ -374,7 +507,6 @@ adcHandler(void *pInst){
   }else{
     DP("\tImmediate ");
   }
-  printf("adc\n");
 
   return 0;
 }
@@ -388,7 +520,6 @@ sbcHandler(void *pInst){
   }else{
     DP("\tImmediate ");
   }
-  printf("sbc\n");
 
   return 0;
 }
@@ -402,7 +533,6 @@ rscHandler(void *pInst){
   }else{
     DP("\tImmediate ");
   }
-  printf("rsc\n");
 
   return 0;
 }
@@ -416,7 +546,6 @@ tstHandler(void *pInst){
   }else{
     DP("\tImmediate ");
   }
-  printf("tst\n");
 
   return 0;
 }
@@ -430,7 +559,6 @@ teqHandler(void *pInst){
   }else{
     DP("\tImmediate ");
   }
-  printf("teq\n");
 
   return 0;
 }
@@ -444,7 +572,6 @@ cmpHandler(void *pInst){
   }else{
     DP("\tImmediate ");
   }
-  printf("cmp\n");
 
   return 0;
 }
@@ -458,8 +585,6 @@ cmnHandler(void *pInst){
   }else{
     DP("\tImmediate ");
   }
-  printf("cmn\n");
-
   return 0;
 }
 
@@ -472,13 +597,9 @@ orrHandler(void *pInst){
   }else{
     DP("\tImmediate ");
   }
-  printf("orr\n");
 
   return 0;
 }
-
-#define X86_OP_MOV_TO_EAX      0xA1
-#define X86_OP_MOV_FROM_EAX    0xA3
 
 OPCODE_HANDLER_RETURN
 movHandler(void *pInst){
@@ -486,22 +607,23 @@ movHandler(void *pInst){
   struct decodeInfo_t instInfo = *(struct decodeInfo_t*)pInst;
 
   if(instInfo.immediate == FALSE){
-    DP("\tRegister ");
+    DP("Register ");
+
+    printf("Rn = %d, Rd = %d\n",DPREG_INFO.Rn, DPREG_INFO.Rd);
+
+    ADD_BYTE(X86_OP_MOV_TO_EAX);
+    ADD_WORD((uintptr_t)&regFile[DPREG_INFO.Rn]);
+
+    ADD_BYTE(X86_OP_MOV_FROM_EAX);
+    ADD_WORD((uintptr_t)&regFile[DPREG_INFO.Rd]);
+    LOG_INSTR(instInfo.pX86Addr,count);
+
+    if(DPREG_INFO.shiftAmt != 0){
+      UNSUPPORTED;
+    }
   }else{
-    DP("\tImmediate ");
+    DP("Immediate\n");
   }
-  printf("mov\n");
-
-  *((uint8_t *)instInfo.pX86Addr + count) = X86_OP_MOV_TO_EAX;
-  count++;
-  *(uint32_t *)(instInfo.pX86Addr + count) = (uintptr_t)&regFile[DPREG_INFO.Rd];
-  count+=4;
-  *((uint8_t *)instInfo.pX86Addr + count) = X86_OP_MOV_FROM_EAX;
-  count++;
-  *(uint32_t *)(instInfo.pX86Addr + count) = (uintptr_t)&regFile[DPREG_INFO.Rn];
-  count+=4;
-
-  count = IP + SP;
 
   return count;
 }
@@ -548,7 +670,10 @@ stmdb sp!,{...}
 ldmia sp,{...}
 ldr
 str
-sub
+sub                     mov %eax,<addr1>        Move the contents of the 
+                        sub %eax, $const        global var representing reg
+                        mov <addr2>,%eax        into eax. Do the subtraction
+                                                and then store the result. 
 mov
 add
 bl
