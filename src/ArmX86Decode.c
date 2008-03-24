@@ -115,6 +115,8 @@ opcodeHandler_t opcodeHandler[NUM_OPCODES] = {
 
 typedef void (*translator)(void);
 
+#ifdef DEBUG
+
 #define LOG_INSTR(addr,count) { \
   int i;                        \
   printf("%p: ",addr);          \
@@ -124,7 +126,27 @@ typedef void (*translator)(void);
   printf("\n");                 \
 }                               \
 
-void armX86Decode(uint32_t *pArmInstr, uint8_t *pX86Instr){
+#define DISPLAY_REGS {                           \
+  int i;                                         \
+  printf("=========\n");                         \
+  for(i=0; i< 16; i++){                          \
+    if(i>0 && ((i%4) == 0)){                     \
+      printf("\n");                              \
+    }                                            \
+    printf("R[%2d] = 0x%08X ",i, regFile[i]);    \
+  }                                              \
+  printf("\n");                                  \
+  printf("=========\n");                         \
+}                                                \
+
+#else
+
+#define LOG_INSTR(addr,count)       {} 
+#define DISPLAY_REGS                {}
+
+#endif /* DEBUG */
+
+void armX86Decode(const struct map_t *memMap){
   bool bConditional = FALSE;
   struct decodeInfo_t instInfo;
   uint32_t armInst;
@@ -134,15 +156,21 @@ void armX86Decode(uint32_t *pArmInstr, uint8_t *pX86Instr){
   // x86InstCount is number of bytes of x86 instructions
   */
   uint32_t x86InstCount,armInstCount;
-  uint32_t *pArmPC = pArmInstr;
-  uint8_t *pX86PC = pX86Instr;
-  translator x86Translator = (translator)pX86Instr;
+  uint32_t *pArmPC = memMap->pArmInstr;
+  uint8_t *pX86PC = memMap->pX86Instr;
+  translator x86Translator = (translator)memMap->pX86Instr;
 
   DP_HI;
 
   DP1("x86PC = %p\n",pX86PC);
 
-  regFile[0] = (uintptr_t)&regFile[15];
+  /*
+  // FIXME: This is a temporary initialization of the stack pointer
+  // to some place that the os is happy letting me access. This needs to be
+  // fixed to point to the ARM stack.
+  */
+  regFile[0] = (uintptr_t)memMap->pArmStackPtr;
+
   for(armInstCount=0; armInstCount < NUM_ARM_INSTRUCTIONS; armInstCount++){
     DP1("Processing instruction: 0x%x\n",*pArmPC);
 
@@ -295,21 +323,12 @@ void armX86Decode(uint32_t *pArmInstr, uint8_t *pX86Instr){
   DP1("x86PC = %p\n",pX86PC);
   *pX86PC = 0xC3;
 
-  int i;
-  for(i=0; i< 16; i++){
-    if(i>0 && ((i%4) == 0)) printf("\n");
-    printf("R[%d] = %d\t",i, regFile[i]);
-  }
-  printf("\n");
+  DISPLAY_REGS;
 
   x86Translator();
 
-  for(i=0; i< 16; i++){
-    if(i>0 && ((i%4) == 0)) printf("\n");
-    printf("R[%d] = %d\t",i, regFile[i]);
-  }
-  printf("\n");
-  
+  DISPLAY_REGS;
+
   DP_BYE;
 }
 

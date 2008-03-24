@@ -79,7 +79,7 @@ struct decodeInfo_t{
 };
 
 #define OPCODE_HANDLER_RETURN   int
-void armX86Decode(uint32_t *pArmInstr, uint8_t *pX86Instr);
+void armX86Decode(const struct map_t *memMap);
 OPCODE_HANDLER_RETURN andHandler(void *pInst);
 OPCODE_HANDLER_RETURN eorHandler(void *pInst);
 OPCODE_HANDLER_RETURN subHandler(void *pInst);

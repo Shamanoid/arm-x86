@@ -11,3 +11,10 @@ void* initX86Code(void *stat){
   //
   return malloc((size_t)4096 * sizeof(uint8_t));
 }
+
+#define ARM_STACK_SIZE          65536
+void* initArmStack(void *stat){
+  uint8_t* armStackPtr;
+  armStackPtr = (uint8_t *)malloc((size_t)ARM_STACK_SIZE * sizeof(uint8_t));
+  return (void *)((armStackPtr == NULL)?NULL:(armStackPtr + ARM_STACK_SIZE));
+}

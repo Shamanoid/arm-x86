@@ -10,8 +10,7 @@
 void printUsage(void);
 
 int main(int argc, char *argv[]){
-  uint32_t *pArmInstr;
-  uint8_t *pX86Instr;
+  struct map_t memMap;
 
   /*
   // From the list of arguments, the first is taken to be the
@@ -25,17 +24,22 @@ int main(int argc, char *argv[]){
     exit(0);
   }
 
-  if((pArmInstr = armX86ElfLoad(argv[1])) == NULL){
+  if((memMap.pArmInstr = armX86ElfLoad(argv[1])) == NULL){
     DP_ASSERT(0,"Exiting..");
     exit(-1);
   }
 
-  if((pX86Instr = (uint8_t *)initX86Code(NULL)) == NULL){
+  if((memMap.pX86Instr = (uint8_t *)initX86Code(NULL)) == NULL){
     DP_ASSERT(0,"Unable to create space for x86 code\n");
     exit(-1);
   }
 
-  armX86Decode(pArmInstr, pX86Instr);
+  if((memMap.pArmStackPtr = initArmStack(NULL)) == NULL){
+    DP_ASSERT(0,"Unable to create stack for ARM code\n");
+    exit(-1);
+  }
+
+  armX86Decode(&memMap);
 
   return 0;
 }
