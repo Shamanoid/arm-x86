@@ -106,7 +106,7 @@ opcodeHandler_t opcodeHandler[NUM_OPCODES] = {
   orrHandler, movHandler, bicHandler, mvnHandler
 };
 
-#define NUM_ARM_INSTRUCTIONS    20
+#define NUM_ARM_INSTRUCTIONS    16
 #define DPREG_INFO              instInfo.armInstInfo.dpreg
 #define DPIMM_INFO              instInfo.armInstInfo.dpimm
 #define LSMULT_INFO             instInfo.armInstInfo.lsmult
@@ -141,8 +141,8 @@ typedef void (*translator)(void);
 
 #else
 
-#define LOG_INSTR(addr,count)       {} 
-#define DISPLAY_REGS                {}
+#define LOG_INSTR(addr,count) 
+#define DISPLAY_REGS 
 
 #endif /* DEBUG */
 
@@ -170,6 +170,7 @@ void armX86Decode(const struct map_t *memMap){
   // fixed to point to the ARM stack.
   */
   regFile[0] = (uintptr_t)memMap->pArmStackPtr;
+  SP = (uintptr_t)memMap->pArmStackPtr;
 
   for(armInstCount=0; armInstCount < NUM_ARM_INSTRUCTIONS; armInstCount++){
     DP1("Processing instruction: 0x%x\n",*pArmPC);
@@ -281,7 +282,7 @@ void armX86Decode(const struct map_t *memMap){
           LSREG_INFO.shiftType = 
             ((armInst & SHIFT_TYPE_MASK) >> SHIFT_TYPE_SHIFT);
           instInfo.pX86Addr = pX86PC;
-          x86InstCount = lsmHandler((void *)&instInfo);
+          x86InstCount = lsregHandler((void *)&instInfo);
           pX86PC += x86InstCount;
         }else{
           UNSUPPORTED;
@@ -339,6 +340,7 @@ void armX86Decode(const struct map_t *memMap){
 #define X86_OP_MEM32_FROM_EAX   0x2B
 #define X86_OP_MOV_TO_REG       0x8B
 #define X86_OP_MOV_FROM_REG     0x89
+#define X86_OP_MOV_IMM_TO_EAX   0xB8
 
 /*
 // A couple of convenience macros to help insert code into the translation
@@ -352,12 +354,72 @@ void armX86Decode(const struct map_t *memMap){
   *(uint32_t *)(instInfo.pX86Addr + count) = (x);       \
   count+=4;                                             \
 
+/*
+// FIXME: W bit needs to be processed for this function.
+// Should the base register be updated with the value of offset at the end?
+*/
 int lsmHandler(void *pInst){
-  struct decodeInfo_t instInfo __attribute__((unused))
+  struct decodeInfo_t instInfo
     = *(struct decodeInfo_t *)pInst;
   uint8_t count = 0;
+  uint8_t i;
+  uint32_t disp = 0;
 
   DP("Load-Store Multiple\n");
+
+  ADD_BYTE(X86_OP_MOV_TO_REG);
+  ADD_BYTE(0x15) /* MODR/M - Mov from disp32 to edx */
+  ADD_WORD((uintptr_t)&regFile[LSMULT_INFO.Rn]);
+
+  for(i=0; i<NUM_ARM_REGISTERS; i++){
+    if((LSMULT_INFO.regList & (0x00000001 << i)) == 0){
+      continue;
+    }
+    if(LSMULT_INFO.L == 0){ /* Store */
+      /*
+      // If P = 1, the base register needs to be excluded. So increment early.
+      */
+      if(LSMULT_INFO.P != 0){
+        disp+=4;
+      }
+      ADD_BYTE(X86_OP_MOV_TO_EAX);
+      ADD_WORD((uintptr_t)&regFile[i]);
+
+      ADD_BYTE(X86_OP_MOV_FROM_REG);
+      ADD_BYTE(0x82) /* MODR/M - Mov from eax to  edx + disp32 */
+      ADD_WORD((int32_t)disp * (LSMULT_INFO.U == 0?-1:1));
+      LOG_INSTR(instInfo.pX86Addr,count);
+
+      /*
+      // If P = 0, the base register needs to be included. So increment late.
+      */
+      if(LSMULT_INFO.P == 0){
+        disp+=4;
+      }
+    }else{ /* Load */
+      /*
+      // If P = 1, the base register needs to be excluded. So increment early.
+      */
+      if(LSMULT_INFO.P != 0){
+        disp+=4;
+      }
+
+      ADD_BYTE(X86_OP_MOV_TO_REG);
+      ADD_BYTE(0x82) /* MODR/M - Mov from edx + disp32 to eax */
+      ADD_WORD((int32_t)disp * (LSMULT_INFO.U == 0?-1:1));
+
+      ADD_BYTE(X86_OP_MOV_FROM_EAX);
+      ADD_WORD((uintptr_t)&regFile[i]);
+      LOG_INSTR(instInfo.pX86Addr,count);
+      
+      /*
+      // If P = 0, the base register needs to be included. So increment late.
+      */
+      if(LSMULT_INFO.P == 0){
+        disp+=4;
+      }
+    }
+  }
 
   return count;
 }
@@ -399,7 +461,7 @@ int lsimmHandler(void *pInst){
     ADD_WORD((uintptr_t)&regFile[LSIMM_INFO.Rd]);
 
     ADD_BYTE(X86_OP_MOV_FROM_REG);
-    ADD_BYTE(0x82) /* MODR/M - Mov from eaz to  edx + disp32 */
+    ADD_BYTE(0x82) /* MODR/M - Mov from eax to  edx + disp32 */
     ADD_WORD((int32_t)LSIMM_INFO.imm * (LSIMM_INFO.U == 0?-1:1));
     LOG_INSTR(instInfo.pX86Addr,count);
   }
@@ -642,6 +704,19 @@ movHandler(void *pInst){
     }
   }else{
     DP("Immediate\n");
+
+    printf("Rd = %d\n", DPIMM_INFO.Rd);
+
+    ADD_BYTE(X86_OP_MOV_IMM_TO_EAX);
+    ADD_WORD((uint32_t)DPIMM_INFO.imm);
+
+    ADD_BYTE(X86_OP_MOV_FROM_EAX);
+    ADD_WORD((uintptr_t)&regFile[DPIMM_INFO.Rd]);
+    LOG_INSTR(instInfo.pX86Addr,count);
+
+    if(DPIMM_INFO.rotate != 0){
+      UNSUPPORTED;
+    }
   }
 
   return count;
