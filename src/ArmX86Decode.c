@@ -354,10 +354,6 @@ void armX86Decode(const struct map_t *memMap){
   *(uint32_t *)(instInfo.pX86Addr + count) = (x);       \
   count+=4;                                             \
 
-/*
-// FIXME: W bit needs to be processed for this function.
-// Should the base register be updated with the value of offset at the end?
-*/
 int lsmHandler(void *pInst){
   struct decodeInfo_t instInfo
     = *(struct decodeInfo_t *)pInst;
@@ -419,6 +415,18 @@ int lsmHandler(void *pInst){
         disp+=4;
       }
     }
+  }
+
+  /*
+  // If the base register needs to be updated with the offset, do that now.
+  */
+  if(LSMULT_INFO.W == 1){
+    ADD_BYTE(X86_OP_MOV_IMM_TO_EAX);
+    ADD_WORD((int32_t)disp *(LSMULT_INFO.U == 0?-1:1))
+
+    ADD_BYTE(X86_OP_MOV_FROM_EAX);
+    ADD_WORD((uintptr_t)&regFile[LSMULT_INFO.Rn]);
+    LOG_INSTR(instInfo.pX86Addr,count);
   }
 
   return count;
