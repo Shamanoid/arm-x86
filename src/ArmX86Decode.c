@@ -75,7 +75,7 @@
 #define SHIFT_AMT_SHIFT         7
 #define SHIFT_TYPE_MASK         0x00000060
 #define SHIFT_TYPE_SHIFT        5
-
+#define OFFSET_MASK             0x00FFFFFF
 #define BIT24_MASK              0x01000000
 #define BIT23_MASK              0x00800000 
 #define BIT22_MASK              0x00400000
@@ -112,6 +112,7 @@ opcodeHandler_t opcodeHandler[NUM_OPCODES] = {
 #define LSMULT_INFO             instInfo.armInstInfo.lsmult
 #define LSREG_INFO              instInfo.armInstInfo.lsreg
 #define LSIMM_INFO              instInfo.armInstInfo.lsimm
+#define BRCH_INFO               instInfo.armInstInfo.branch
 
 typedef void (*translator)(void);
 
@@ -302,6 +303,12 @@ void armX86Decode(const struct map_t *memMap){
         pX86PC += x86InstCount;
       break;
       case INST_TYPE_BRCH:
+        BRCH_INFO.cond = ((armInst & COND_MASK) >> COND_SHIFT);
+        BRCH_INFO.L = ((armInst & BIT24_MASK) > 0?TRUE:FALSE);
+        BRCH_INFO.offset = (armInst & OFFSET_MASK);
+        instInfo.pX86Addr = pX86PC;
+        x86InstCount = brchHandler((void *)&instInfo);
+        pX86PC += x86InstCount;
       break;
       case INST_TYPE_COPLS:
         UNSUPPORTED;
@@ -483,6 +490,16 @@ int lsregHandler(void *pInst){
   uint8_t count = 0;
 
   DP("\tLoad-Store Register-Shift\n");
+
+  return count;
+}
+
+int brchHandler(void *pInst){
+  struct decodeInfo_t instInfo __attribute__((unused))
+    = *(struct decodeInfo_t *)pInst;
+  uint8_t count = 0;
+
+  DP("Branch\n");
 
   return count;
 }

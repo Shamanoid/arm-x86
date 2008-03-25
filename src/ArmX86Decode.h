@@ -73,6 +73,12 @@ struct decodeInfo_t{
       uint8_t Rd;
       uint16_t imm;
     }lsimm;
+
+    struct {
+      uint8_t cond;
+      bool L;
+      uint32_t offset;
+    }branch;
   }armInstInfo;
   bool immediate; /* True => DPIMM */
   uint8_t* pX86Addr;
@@ -99,5 +105,6 @@ OPCODE_HANDLER_RETURN mvnHandler(void *pInst);
 int lsmHandler(void *pInst);
 int lsimmHandler(void *pInst);
 int lsregHandler(void *pInst);
+int brchHandler(void *pInst);
 
 #endif /* _ARMX86_DECODE_H */
