@@ -81,6 +81,7 @@ struct decodeInfo_t{
     }branch;
   }armInstInfo;
   bool immediate; /* True => DPIMM */
+  bool endBB; /* Instruction signals end of basic block */
   uint8_t* pX86Addr;
 };
 

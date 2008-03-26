@@ -106,7 +106,6 @@ opcodeHandler_t opcodeHandler[NUM_OPCODES] = {
   orrHandler, movHandler, bicHandler, mvnHandler
 };
 
-#define NUM_ARM_INSTRUCTIONS    16
 #define DPREG_INFO              instInfo.armInstInfo.dpreg
 #define DPIMM_INFO              instInfo.armInstInfo.dpimm
 #define LSMULT_INFO             instInfo.armInstInfo.lsmult
@@ -153,10 +152,9 @@ void armX86Decode(const struct map_t *memMap){
   uint32_t armInst;
 
   /*
-  // armInstCount is number of ARM instructions
   // x86InstCount is number of bytes of x86 instructions
   */
-  uint32_t x86InstCount,armInstCount;
+  uint32_t x86InstCount;
   uint32_t *pArmPC = memMap->pArmInstr;
   uint8_t *pX86PC = memMap->pX86Instr;
   translator x86Translator = (translator)memMap->pX86Instr;
@@ -167,13 +165,14 @@ void armX86Decode(const struct map_t *memMap){
 
   /*
   // FIXME: This is a temporary initialization of the stack pointer
-  // to some place that the os is happy letting me access. This needs to be
-  // fixed to point to the ARM stack.
+  // to some place that the os is happy letting me access.
   */
   regFile[0] = (uintptr_t)memMap->pArmStackPtr;
   SP = (uintptr_t)memMap->pArmStackPtr;
 
-  for(armInstCount=0; armInstCount < NUM_ARM_INSTRUCTIONS; armInstCount++){
+  instInfo.endBB = FALSE;
+
+  while(instInfo.endBB == FALSE){
     DP1("Processing instruction: 0x%x\n",*pArmPC);
 
     armInst = *pArmPC;
@@ -421,6 +420,14 @@ int lsmHandler(void *pInst){
       if(LSMULT_INFO.P == 0){
         disp+=4;
       }
+
+      /*
+      // Finally, if the register is the PC, signal that this is the end of
+      // a basic block.
+      */
+      if(i == 15){
+        ((struct decodeInfo_t *)pInst)->endBB = TRUE;
+      }
     }
   }
 
@@ -464,6 +471,13 @@ int lsimmHandler(void *pInst){
     ADD_BYTE(X86_OP_MOV_FROM_EAX);
     ADD_WORD((uintptr_t)&regFile[LSIMM_INFO.Rd]);
     LOG_INSTR(instInfo.pX86Addr,count);
+
+    /*
+    // If the destination is the PC, this is the end of a basic block
+    */
+    if(LSIMM_INFO.Rd == 15){
+      ((struct decodeInfo_t *)pInst)->endBB = TRUE;
+    };
   }else{
     DP("Store ");
     printf("Rd = %d, Rn = %d\n",LSIMM_INFO.Rd, LSIMM_INFO.Rn);
