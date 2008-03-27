@@ -8,7 +8,7 @@ void *initArmStack(void *stat);
 
 struct hash_struct
 {
-  void *ptr;			/* key field */
+  void *key;			/* key field */
   void *value;			/* value */
   UT_hash_handle hh;		/* makes this structure hashable */
 };

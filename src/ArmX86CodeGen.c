@@ -19,7 +19,7 @@ void* initArmStack(void *stat){
   return (void *)((armStackPtr == NULL)?NULL:(armStackPtr + ARM_STACK_SIZE));
 }
 
-int InsertItem(void *address, void *startBlockAddress)
+int InsertItem(void *blockAddress, void *translatedAddress)
 {
   struct hash_struct *s;
 
@@ -31,11 +31,11 @@ int InsertItem(void *address, void *startBlockAddress)
      return -1;
 
   /* set the key and value pairs */
-  s->ptr = address;
-  s->value = startBlockAddress;
+  s->key = blockAddress;
+  s->value = translatedAddress;
 
   /* insert into hash table */
-  HASH_ADD(hh, translationCache, ptr, sizeof(void *), s);
+  HASH_ADD(hh, translationCache, key, sizeof(void *), s);
 
   return 0;
 }
