@@ -18,3 +18,44 @@ void* initArmStack(void *stat){
   armStackPtr = (uint8_t *)malloc((size_t)ARM_STACK_SIZE * sizeof(uint8_t));
   return (void *)((armStackPtr == NULL)?NULL:(armStackPtr + ARM_STACK_SIZE));
 }
+
+int InsertItem(void *address, void *startBlockAddress)
+{
+  struct hash_struct *s;
+
+  /* allocate memory for hash table */
+  s = malloc(sizeof(struct hash_struct));  
+
+  /* memory allocation did not succeed */
+  if(s == NULL)
+     return -1;
+
+  /* set the key and value pairs */
+  s->ptr = address;
+  s->value = startBlockAddress;
+
+  /* insert into hash table */
+  HASH_ADD(hh, translationCache, ptr, sizeof(void *), s);
+
+  return 0;
+}
+
+void FreeHashTableMemory(void)
+{
+  struct hash_struct *s;
+
+  for(s = translationCache; s != NULL; s = s->hh.next)
+	free(s);
+}
+
+void* GetItem(void *address)
+{
+  struct hash_struct *s;
+
+  /* find key in hash */
+  HASH_FIND(hh, translationCache, &address, sizeof(void *), s);
+
+  /* return value */
+  return s->value;
+}
+
