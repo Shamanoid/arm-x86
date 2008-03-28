@@ -3,11 +3,9 @@
 #include "ArmX86Decode.h"
 #include "ArmX86Types.h"
 
-#define COND_MASK               0xF0000000  /* Mask for the condition field */
-#define COND_AL			0xE0000000  /* Condition - Always */
-#define COND_SHIFT              28
-
 /*
+// Set of macros and global variables to deal with instructions and opcodes
+//
 // For purposes of instruction decoding, the instructions are divided into
 // families as described here. This classification is based on the bits
 // 27 down to 25 in each instruction.
@@ -32,6 +30,10 @@
 //    Coprocessor instructions
 //    Software Interrupt
 */
+#define COND_MASK               0xF0000000  /* Mask for the condition field */
+#define COND_AL			0xE0000000  /* Condition - Always */
+#define COND_SHIFT              28
+
 #define INST_TYPE_MASK          0x0E000000  // What type of instruction?
 #define INST_TYPE_DP_MISC       0x00000000
 #define INST_TYPE_IMM_UNDEF     0x02000000
@@ -62,6 +64,9 @@
 #define OPCODE_MVN              0x01E00000  // Move not
 #define OPCODE_SHIFT            21
 
+/*
+// Set of macros and global variables to deal with registers
+*/
 #define RD_SHIFT                12
 #define RN_SHIFT                16
 #define RS_SHIFT                8
@@ -92,11 +97,42 @@
 #define IP                      R15
 
 uint32_t regFile[NUM_ARM_REGISTERS] = {
-  0x80000, 0x80000, 0x80000, 0x80000,
-  0x80000, 0x80000, 0x80000, 0x80000,
-  0x80000, 0x80000, 0x80000, 0x80000,
-  0x80000, 0x80000, 0x80000, 0x80000
+  0x0, 0x1, 0x2, 0x3,
+  0x4, 0x5, 0x6, 0x7,
+  0x8, 0x9, 0xA, 0xB,
+  0xC, 0xD, 0xE, 0xF
 };
+
+/*
+// Set of macros and global variables to deal with conditions
+*/
+uint32_t cpsr;     /* ARM Program Status Register for user mode */
+uint32_t x86Flags; /* x86 Flag Register */
+
+#define N_FLAG_MASK             0x80000000
+#define Z_FLAG_MASK             0x40000000
+#define C_FLAG_MASK             0x20000000
+#define V_FLAG_MASK             0x10000000
+
+#define NEGATIVE(x)             (((x) & N_FLAG_MASK) > 0?1:0)
+#define ZERO(x)                 (((x) & Z_FLAG_MASK) > 0?1:0)
+#define CARRY(x)                (((x) & C_FLAG_MASK) > 0?1:0)
+#define OVERFLOW(x)             (((x) & V_FLAG_MASK) > 0?1:0)
+
+#define EQ                      ZER0(cpsr)      /* Z = 1            */
+#define NE                      !EQ             /* Z = 0            */
+#define CS                      CARRY(cpsr)     /* C = 1            */
+#define CC                      !CS             /* C = 0            */
+#define MI                      NEGATIVE(cpsr)  /* N = 1            */
+#define PL                      !MI             /* N = 0            */
+#define VS                      OVERFLOW(cpsr)  /* V = 1            */
+#define VC                      !VS             /* V = 0            */
+#define HI                      (CS && NE)      /* C = 1 && Z = 0   */
+#define LS                      (CC || EQ)      /* C = 0 || Z = 1   */
+#define GE                      !(MI ^ VS)      /* N == V           */
+#define LT                      (MI ^ VS)       /* N != V           */
+#define GT                      (NE && GE)      /* Z = 0 and N == V */
+#define LE                      (EQ || LT)      /* Z = 1 or  N != V */
 
 typedef OPCODE_HANDLER_RETURN (*opcodeHandler_t)(void *inst);
 opcodeHandler_t opcodeHandler[NUM_OPCODES] = {
@@ -143,6 +179,18 @@ typedef void (*translator)(void);
 
 #define LOG_INSTR(addr,count) 
 #define DISPLAY_REGS 
+
+#endif /* DEBUG */
+
+#ifdef DEBUG
+/*
+// Include a couple of profiling variable. These are not really
+// indicative because a static count of instructions that modify
+// flags is not as important as the run-count for instructions
+// that do. But keep them around anyway.
+*/
+uint32_t sEq1Count = 0;
+uint32_t sEq0Count = 0;
 
 #endif /* DEBUG */
 
@@ -214,6 +262,15 @@ void armX86Decode(const struct map_t *memMap){
           DPREG_INFO.Rm = RM(armInst);
           DPREG_INFO.Rd = RD(armInst);
           DPREG_INFO.S = ((armInst & BIT20_MASK) > 0?TRUE:FALSE);
+
+#ifdef DEBUG
+          if(DPREG_INFO.S == TRUE){
+            sEq1Count++;
+          }else{
+            sEq0Count++;
+          }
+#endif /* DEBUG */
+
           instInfo.pX86Addr = pX86PC;
           instInfo.immediate = FALSE;
           DPREG_INFO.shiftType = 
@@ -242,6 +299,15 @@ void armX86Decode(const struct map_t *memMap){
           DPIMM_INFO.rotate = ROTATE(armInst);
           DPIMM_INFO.imm = (armInst & 0x000000FF);
           DPIMM_INFO.S = ((armInst & BIT20_MASK) >0?TRUE:FALSE);
+
+#ifdef DEBUG
+          if(DPREG_INFO.S == TRUE){
+            sEq1Count++;
+          }else{
+            sEq0Count++;
+          }
+#endif /* DEBUG */
+
           instInfo.pX86Addr = pX86PC;
           instInfo.immediate = TRUE;
           x86InstCount = 
@@ -336,10 +402,89 @@ void armX86Decode(const struct map_t *memMap){
 
   DISPLAY_REGS;
 
+#ifdef DEBUG
+  float sEq1Percent = ((100.0 * sEq1Count)/(sEq1Count + sEq0Count));
+  float sEq0Percent = ((100.0 * sEq0Count)/(sEq1Count + sEq0Count));
+
+  printf("%.2f percent instructions modify flags\n",sEq1Percent);
+  printf("%.2f percent instructions don't modify flags\n",sEq0Percent);
+#endif /* DEBUG */
+
   DP_BYE;
 }
 
-
+/*
+// Strategy for condition evaluation
+//
+// There are instructions in ARM that modify flags some of the time but not
+// at other times. In the x86 instruction set, some instructions modify flags
+// all the time and some never do. This subtle difference is the philosophy
+// of the two instruction sets offers an interesting challenge to converting
+// code from one instruction set to the other.
+//
+// That a particular ARM instruction will update a flag is indicated by a bit
+// named 'S' that is present in every data processing instruction. If the 'S'
+// bit is '1', the flags will be updated, and if the 'S' bit is '0', they will
+// not be. Instruction such as 'compare', whose sole purpose is to update flags
+// are not permitted to have 'S' set to '0'.
+//
+// The challenge of conversion is interesting because in ARM programs, those
+// instructions that update flags can be freely interspersed with other
+// instructions that would normally update flags but are configured by the 
+// compiler not to do so. For instance, an 'add' should update the carry, but
+// the compiler might choose it not to. This might be because the compiler
+// finds that the result does not influence a decision in any case. In contrast,
+// an 'add' performed on x86 would unconditionally update the carry, and
+// possibly the sign and overflow flags. Clearly, a one-to-one translation
+// would break the semantics of the program. Consider the case where the
+// sequence of ARM instructions is as follows:
+//   sub R10, R10, R10 (encoded with S = 1)
+//   add R2, R1, R0 (encoded with S = 0)
+//   beq <addr> (branch if 0)
+// Here the sub instruction changes the zero flag. The add that follows it
+// normally would but does not in this case because 'S' is cleared in the
+// encoding of the instruction. The beq instruction uses the result of the
+// subtraction.
+// A direct translation of the instructions to x86 would make the x86 condition
+// check use the result of the add!
+//
+// It is observed that the trend in the gcc compiler for ARM is that unless
+// an instruction produces a result that influences a conditional branch
+// or conditional expression, the 'S' bit in the instruction is set to 0.
+// This means that only instructions that modify flags for a if-then-else
+// or instructions that modify the loop control variable in the a loop would
+// have the 'S' bit set to 1. Assuming that a loop has a few instructions,
+// perhaps only one instruction close to the end of the loop would modify the
+// flag that controls the loop. Obviously, the ratio os instructions that
+// modify the flags to those that do not, is very small. It follows that
+// the strategy that offers greater speed would be one that treats instructions
+// that do modify flags as special cases.
+//
+// Hence the following strategy is adopted:
+// There is a flags variable that is maintained as a global variable by the
+// binary translator and meant to be a snapshot of the x86 flags. When an
+// instruction has the 'S' bit set to 1, this variable is loaded into the x86
+// flags register using the following combination of instructions:
+//   push <flags> Pushes the global flags variable on to the stack
+//   popf         Loads the flags register from the top of the stack
+// This is like loading the last flag context, i.e. the context created by the
+// last instruction to modify the flags.
+// An instruction that checks the condition and executes can then proceed
+// by using native x86 condition checks. An instruction that modifies the
+// flags can update the x86 flags register itself.
+// Once the instruction has been completed, if the flags have been updated,
+// the snapshot of the flags must once again be saved. This is done by the
+// following combination of instructions:
+//   pushf        Pushes the flags register to the stack
+//   pop <flags>  Loads the flags variable from the top of the stack
+// This strategy ensures that even if there are instructions that do not
+// modify flags that are placed in between instructions that do and those
+// that check them (such a strategy may be adopted for optimization when the
+// compiler wants to keep the pipeline full), the logic remains valid.
+*/
+/*
+// Set of macros defining x86 opcodes.
+*/
 #define X86_OP_MOV_TO_EAX       0xA1
 #define X86_OP_MOV_FROM_EAX     0xA3
 #define X86_OP_SUB32_FROM_EAX   0x2D
@@ -347,6 +492,10 @@ void armX86Decode(const struct map_t *memMap){
 #define X86_OP_MOV_TO_REG       0x8B
 #define X86_OP_MOV_FROM_REG     0x89
 #define X86_OP_MOV_IMM_TO_EAX   0xB8
+#define X86_OP_PUSH_MEM32       0xFF
+#define X86_OP_POPF             0x9D
+#define X86_OP_POP_MEM32        0x8F
+#define X86_OP_PUSHF            0x9C
 
 /*
 // A couple of convenience macros to help insert code into the translation
@@ -359,6 +508,11 @@ void armX86Decode(const struct map_t *memMap){
 #define ADD_WORD(x)                                     \
   *(uint32_t *)(instInfo.pX86Addr + count) = (x);       \
   count+=4;                                             \
+
+/*
+// FIXME: Don't bother making a copy of the entire data structure. Use
+// pInst directly.
+*/
 
 int lsmHandler(void *pInst){
   struct decodeInfo_t instInfo
@@ -549,6 +703,13 @@ subHandler(void *pInst){
   struct decodeInfo_t instInfo = *(struct decodeInfo_t*)pInst;
   uint8_t count = 0;
 
+  if(DPREG_INFO.S == TRUE){
+    ADD_BYTE(X86_OP_PUSH_MEM32);
+    ADD_BYTE(0x35); /* MOD R/M for PUSH - 0xFF /6 */
+    ADD_WORD((uintptr_t)&x86Flags);
+    ADD_BYTE(X86_OP_POPF);
+  }
+
   if(instInfo.immediate == FALSE){
     DP("Register ");
     printf("\tRN = %d\nRD = %d\n",DPREG_INFO.Rn, DPREG_INFO.Rd);
@@ -587,6 +748,13 @@ subHandler(void *pInst){
   }
   if(DPREG_INFO.S == 0){
     DP(" WARNING -> Updating FLAGS when prohibited\n");
+  }
+
+  if(DPREG_INFO.S == TRUE){
+    ADD_BYTE(X86_OP_PUSHF);
+    ADD_BYTE(X86_OP_POP_MEM32);
+    ADD_BYTE(0x05); /* MOD R/M for PUSH - 0xFF /6 */
+    ADD_WORD((uintptr_t)&x86Flags);
   }
 
   return count;
