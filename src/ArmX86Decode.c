@@ -485,17 +485,19 @@ void armX86Decode(const struct map_t *memMap){
 /*
 // Set of macros defining x86 opcodes.
 */
-#define X86_OP_MOV_TO_EAX       0xA1
-#define X86_OP_MOV_FROM_EAX     0xA3
-#define X86_OP_SUB32_FROM_EAX   0x2D
-#define X86_OP_MEM32_FROM_EAX   0x2B
-#define X86_OP_MOV_TO_REG       0x8B
-#define X86_OP_MOV_FROM_REG     0x89
-#define X86_OP_MOV_IMM_TO_EAX   0xB8
-#define X86_OP_PUSH_MEM32       0xFF
-#define X86_OP_POPF             0x9D
-#define X86_OP_POP_MEM32        0x8F
-#define X86_OP_PUSHF            0x9C
+#define X86_OP_MOV_TO_EAX            0xA1
+#define X86_OP_MOV_FROM_EAX          0xA3
+#define X86_OP_SUB32_FROM_EAX        0x2D
+#define X86_OP_SUB_MEM32_FROM_EAX    0x2B
+#define X86_OP_MOV_TO_REG            0x8B
+#define X86_OP_MOV_FROM_REG          0x89
+#define X86_OP_MOV_IMM_TO_EAX        0xB8
+#define X86_OP_PUSH_MEM32            0xFF
+#define X86_OP_POPF                  0x9D
+#define X86_OP_POP_MEM32             0x8F
+#define X86_OP_PUSHF                 0x9C
+#define X86_OP_CMP_MEM32_WITH_REG    0x29
+#define X86_OP_CMP32_WITH_EAX        0x3D
 
 /*
 // A couple of convenience macros to help insert code into the translation
@@ -708,6 +710,7 @@ subHandler(void *pInst){
     ADD_BYTE(0x35); /* MOD R/M for PUSH - 0xFF /6 */
     ADD_WORD((uintptr_t)&x86Flags);
     ADD_BYTE(X86_OP_POPF);
+    LOG_INSTR(instInfo.pX86Addr,count);
   }
 
   if(instInfo.immediate == FALSE){
@@ -717,7 +720,7 @@ subHandler(void *pInst){
     ADD_BYTE(X86_OP_MOV_TO_EAX);
     ADD_WORD((uintptr_t)&regFile[DPREG_INFO.Rn]);
 
-    ADD_BYTE(X86_OP_MEM32_FROM_EAX);
+    ADD_BYTE(X86_OP_SUB_MEM32_FROM_EAX);
     ADD_BYTE(0x05); /* MODR/M */
     ADD_WORD((uintptr_t)&regFile[DPREG_INFO.Rm]);
 
@@ -755,6 +758,7 @@ subHandler(void *pInst){
     ADD_BYTE(X86_OP_POP_MEM32);
     ADD_BYTE(0x05); /* MOD R/M for PUSH - 0xFF /6 */
     ADD_WORD((uintptr_t)&x86Flags);
+    LOG_INSTR(instInfo.pX86Addr,count);
   }
 
   return count;
@@ -854,14 +858,57 @@ teqHandler(void *pInst){
 OPCODE_HANDLER_RETURN
 cmpHandler(void *pInst){
   struct decodeInfo_t instInfo = *(struct decodeInfo_t*)pInst;
+  uint8_t count = 0;
 
-  if(instInfo.immediate == FALSE){
-    DP("\tRegister ");
-  }else{
-    DP("\tImmediate ");
+  if(DPREG_INFO.S == TRUE){
+    ADD_BYTE(X86_OP_PUSH_MEM32);
+    ADD_BYTE(0x35); /* MOD R/M for PUSH - 0xFF /6 */
+    ADD_WORD((uintptr_t)&x86Flags);
+    ADD_BYTE(X86_OP_POPF);
+    LOG_INSTR(instInfo.pX86Addr,count);
   }
 
-  return 0;
+  if(instInfo.immediate == FALSE){
+    DP("Register ");
+    printf("Rn = %d, Rm = %d\n",DPREG_INFO.Rn, DPREG_INFO.Rm);
+
+    ADD_BYTE(X86_OP_MOV_TO_EAX);
+    ADD_WORD((uintptr_t)&regFile[DPREG_INFO.Rn]);
+
+    ADD_BYTE(X86_OP_CMP_MEM32_WITH_REG);
+    ADD_BYTE(0x05); /* MODR/M - EAX */
+    ADD_WORD((uintptr_t)&regFile[DPREG_INFO.Rm]);
+    LOG_INSTR(instInfo.pX86Addr,count);
+
+    if(DPREG_INFO.shiftAmt != 0){ 
+      UNSUPPORTED;
+    }
+  }else{
+    DP("Immediate ");
+    printf("Rn = %d, Rm = %d\n",DPREG_INFO.Rn, DPREG_INFO.Rm);
+
+    ADD_BYTE(X86_OP_MOV_TO_EAX);
+    ADD_WORD((uintptr_t)&regFile[DPIMM_INFO.Rn]);
+
+    ADD_BYTE(X86_OP_CMP32_WITH_EAX);
+    ADD_WORD((uint32_t)DPIMM_INFO.imm);
+
+    LOG_INSTR(instInfo.pX86Addr,count);
+
+    if(DPIMM_INFO.rotate != 0){ 
+      UNSUPPORTED;
+    }
+  }
+
+  if(DPREG_INFO.S == TRUE){
+    ADD_BYTE(X86_OP_PUSHF);
+    ADD_BYTE(X86_OP_POP_MEM32);
+    ADD_BYTE(0x05); /* MOD R/M for PUSH - 0xFF /6 */
+    ADD_WORD((uintptr_t)&x86Flags);
+    LOG_INSTR(instInfo.pX86Addr,count);
+  }
+
+  return count;
 }
 
 OPCODE_HANDLER_RETURN
