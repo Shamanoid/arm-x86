@@ -133,6 +133,23 @@ uint32_t x86Flags; /* x86 Flag Register */
 #define LT                      (MI ^ VS)       /* N != V           */
 #define GT                      (NE && GE)      /* Z = 0 and N == V */
 #define LE                      (EQ || LT)      /* Z = 1 or  N != V */
+#define AL                      0xE
+
+#define COND_EQ                 0
+#define COND_NE                 1
+#define COND_CS                 2
+#define COND_CC                 3
+#define COND_MI                 4 
+#define COND_PL                 5
+#define COND_VS                 6
+#define COND_VC                 7
+#define COND_HI                 8
+#define COND_LS                 9
+#define COND_GE                 10
+#define COND_LT                 11
+#define COND_GT                 12 
+#define COND_LE                 13
+#define COND_UNDEF              15
 
 typedef OPCODE_HANDLER_RETURN (*opcodeHandler_t)(void *inst);
 opcodeHandler_t opcodeHandler[NUM_OPCODES] = {
@@ -150,6 +167,26 @@ opcodeHandler_t opcodeHandler[NUM_OPCODES] = {
 #define BRCH_INFO               instInfo.armInstInfo.branch
 
 typedef void (*translator)(void);
+
+/*
+// Set of macros defining x86 opcodes.
+*/
+#define X86_OP_MOV_TO_EAX            0xA1
+#define X86_OP_MOV_FROM_EAX          0xA3
+#define X86_OP_SUB32_FROM_EAX        0x2D
+#define X86_OP_SUB_MEM32_FROM_EAX    0x2B
+#define X86_OP_MOV_TO_REG            0x8B
+#define X86_OP_MOV_FROM_REG          0x89
+#define X86_OP_MOV_IMM_TO_EAX        0xB8
+#define X86_OP_PUSH_MEM32            0xFF
+#define X86_OP_POPF                  0x9D
+#define X86_OP_POP_MEM32             0x8F
+#define X86_OP_PUSHF                 0x9C
+#define X86_OP_CMP_MEM32_WITH_REG    0x29
+#define X86_OP_CMP32_WITH_EAX        0x3D
+#define X86_PRE_JCC                  0x0F
+#define X86_OP_JNE                   0x85
+#define X86_OP_JG                    0x8F
 
 #ifdef DEBUG
 
@@ -182,6 +219,78 @@ typedef void (*translator)(void);
 
 #endif /* DEBUG */
 
+/*
+// A couple of convenience macros to help insert code into the translation
+// cache while keeping the code readable.
+*/
+#define ADD_BYTE(x)                                     \
+  *((uint8_t *)instInfo.pX86Addr + count) = (x);        \
+  count++;                                              \
+
+#define ADD_WORD(x)                                     \
+  *(uint32_t *)(instInfo.pX86Addr + count) = (x);       \
+  count+=4;                                             \
+
+uint8_t handleConditional(void *pInst){ 
+  struct decodeInfo_t instInfo = *(struct decodeInfo_t*)pInst;
+  uint8_t count = 0;
+
+  DP_HI;
+
+  ADD_BYTE(X86_OP_PUSH_MEM32);
+  ADD_BYTE(0x35); /* MOD R/M for PUSH - 0xFF /6 */
+  ADD_WORD((uintptr_t)&x86Flags);
+  ADD_BYTE(X86_OP_POPF);
+  LOG_INSTR(instInfo.pX86Addr,count);
+
+  printf("cond = %d\n",instInfo.cond);
+  switch(instInfo.cond){
+    case COND_EQ:
+      /* jne */
+      ADD_BYTE(X86_PRE_JCC)
+      ADD_BYTE(X86_OP_JNE)
+    break;
+    case COND_NE:
+    break;
+    case COND_CS:
+    break;
+    case COND_CC:
+    break;
+    case COND_MI:
+    break;
+    case COND_PL:
+    break;
+    case COND_VS:
+    break;
+    case COND_VC:
+    break;
+    case COND_HI:
+    break;
+    case COND_LS:
+    break;
+    case COND_GE:
+    break;
+    case COND_LT:
+    break;
+    case COND_GT:
+    break;
+    case COND_LE:
+      /* jg */
+      ADD_BYTE(X86_PRE_JCC)
+      ADD_BYTE(X86_OP_JG)
+    break;
+    case COND_UNDEF:
+      DP_ASSERT(0, "Unsupported condition code\n");
+    default:
+      DP_ASSERT(0, "Invalid condition code\n");
+    break;
+  }
+
+  DP_BYE;
+
+  return count;
+}
+
 #ifdef DEBUG
 /*
 // Include a couple of profiling variable. These are not really
@@ -206,6 +315,7 @@ void armX86Decode(const struct map_t *memMap){
   uint32_t *pArmPC = memMap->pArmInstr;
   uint8_t *pX86PC = memMap->pX86Instr;
   translator x86Translator = (translator)memMap->pX86Instr;
+  uint8_t *pCondJumpOffsetAddr = 0;
 
   DP_HI;
 
@@ -225,17 +335,30 @@ void armX86Decode(const struct map_t *memMap){
 
     armInst = *pArmPC;
     /*
-    // First check the condition field. Set a flag in case the instruction
-    // is to be executed conditionally.
+    // First check the condition field. Set a jump in the code if the
+    //  instruction is to be executed conditionally.
     */
+#if 0
     if((armInst & COND_MASK) != COND_AL){
       bConditional = TRUE;
     }else{
       bConditional = FALSE;
     }
+#endif
 
+    instInfo.cond = ((armInst & COND_MASK) >> COND_SHIFT);
+    instInfo.pX86Addr = pX86PC;
+    if(instInfo.cond != AL){
+      x86InstCount = handleConditional((void *)&instInfo);
+      pCondJumpOffsetAddr = instInfo.pX86Addr + x86InstCount;
+      x86InstCount += 4; /* Reserve space for a 4-byte offset */
+      *(uint32_t *)pCondJumpOffsetAddr = 0; /* Set the offset to 0 at first */
+      pX86PC += x86InstCount; 
+    }
+
+#if 0
     DP_ASSERT(bConditional == FALSE,"Encountered conditional instruction\n");
-
+#endif
     /*
     // There are usually two source operands and one destination register for
     // data processing instruction. The compare, test and move instructions
@@ -257,7 +380,6 @@ void armX86Decode(const struct map_t *memMap){
         */
         if(((armInst & 0x01900000) != 0x01000000) && 
           ((armInst & 0x00000090) != 0x00000090)){
-          DPREG_INFO.cond = ((armInst & COND_MASK) >> COND_SHIFT);
           DPREG_INFO.Rn = RN(armInst);
           DPREG_INFO.Rm = RM(armInst);
           DPREG_INFO.Rd = RD(armInst);
@@ -293,7 +415,6 @@ void armX86Decode(const struct map_t *memMap){
       break;
       case INST_TYPE_IMM_UNDEF:
         if((armInst & 0x01900000) != 0x01000000){
-          DPIMM_INFO.cond = ((armInst & COND_MASK) >> COND_SHIFT);
           DPIMM_INFO.Rn = RN(armInst);
           DPIMM_INFO.Rd = RD(armInst);
           DPIMM_INFO.rotate = ROTATE(armInst);
@@ -319,7 +440,6 @@ void armX86Decode(const struct map_t *memMap){
         }
       break;
       case INST_TYPE_LSIMM:
-        LSIMM_INFO.cond = ((armInst & COND_MASK) >> COND_SHIFT);
         LSIMM_INFO.P = ((armInst & BIT24_MASK) > 0?TRUE:FALSE);
         LSIMM_INFO.U = ((armInst & BIT23_MASK) > 0?TRUE:FALSE);
         LSIMM_INFO.B = ((armInst & BIT22_MASK) > 0?TRUE:FALSE);
@@ -334,7 +454,6 @@ void armX86Decode(const struct map_t *memMap){
       break;
       case INST_TYPE_LSR_UNDEF:
         if((armInst & 0x00000010) == 0){
-          LSREG_INFO.cond = ((armInst & COND_MASK) >> COND_SHIFT);
           LSREG_INFO.P = ((armInst & BIT24_MASK) > 0?TRUE:FALSE);
           LSREG_INFO.U = ((armInst & BIT23_MASK) > 0?TRUE:FALSE);
           LSREG_INFO.B = ((armInst & BIT22_MASK) > 0?TRUE:FALSE);
@@ -355,7 +474,6 @@ void armX86Decode(const struct map_t *memMap){
         }
       break;
       case INST_TYPE_LSMULT:
-        LSMULT_INFO.cond = ((armInst & COND_MASK) >> COND_SHIFT);
         LSMULT_INFO.Rn = RN(armInst);
         LSMULT_INFO.regList = armInst & 0x0000FFFF;
         LSMULT_INFO.P = ((armInst & BIT24_MASK) > 0?TRUE:FALSE);
@@ -368,7 +486,6 @@ void armX86Decode(const struct map_t *memMap){
         pX86PC += x86InstCount;
       break;
       case INST_TYPE_BRCH:
-        BRCH_INFO.cond = ((armInst & COND_MASK) >> COND_SHIFT);
         BRCH_INFO.L = ((armInst & BIT24_MASK) > 0?TRUE:FALSE);
         BRCH_INFO.offset = (armInst & OFFSET_MASK);
         instInfo.pX86Addr = pX86PC;
@@ -385,6 +502,10 @@ void armX86Decode(const struct map_t *memMap){
         UNSUPPORTED;
       break;
     }
+    if(instInfo.cond != AL){
+      *(uint32_t *)pCondJumpOffsetAddr = x86InstCount;
+    }
+
     pArmPC++;
   }
   
@@ -482,35 +603,6 @@ void armX86Decode(const struct map_t *memMap){
 // that check them (such a strategy may be adopted for optimization when the
 // compiler wants to keep the pipeline full), the logic remains valid.
 */
-/*
-// Set of macros defining x86 opcodes.
-*/
-#define X86_OP_MOV_TO_EAX            0xA1
-#define X86_OP_MOV_FROM_EAX          0xA3
-#define X86_OP_SUB32_FROM_EAX        0x2D
-#define X86_OP_SUB_MEM32_FROM_EAX    0x2B
-#define X86_OP_MOV_TO_REG            0x8B
-#define X86_OP_MOV_FROM_REG          0x89
-#define X86_OP_MOV_IMM_TO_EAX        0xB8
-#define X86_OP_PUSH_MEM32            0xFF
-#define X86_OP_POPF                  0x9D
-#define X86_OP_POP_MEM32             0x8F
-#define X86_OP_PUSHF                 0x9C
-#define X86_OP_CMP_MEM32_WITH_REG    0x29
-#define X86_OP_CMP32_WITH_EAX        0x3D
-
-/*
-// A couple of convenience macros to help insert code into the translation
-// cache while keeping the code readable.
-*/
-#define ADD_BYTE(x)                                     \
-  *((uint8_t *)instInfo.pX86Addr + count) = (x);        \
-  count++;                                              \
-
-#define ADD_WORD(x)                                     \
-  *(uint32_t *)(instInfo.pX86Addr + count) = (x);       \
-  count+=4;                                             \
-
 /*
 // FIXME: Don't bother making a copy of the entire data structure. Use
 // pInst directly.

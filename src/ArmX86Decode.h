@@ -17,7 +17,6 @@ typedef enum {
 struct decodeInfo_t{
   union armInstInfo_u{
     struct {
-      uint8_t cond;
       bool P;
       bool U;
       bool S;
@@ -28,7 +27,6 @@ struct decodeInfo_t{
     }lsmult;
 
     struct {
-      uint8_t cond;
       bool S;
       uint8_t Rn;
       uint8_t Rd;
@@ -40,7 +38,6 @@ struct decodeInfo_t{
     }dpreg;
 
     struct {
-      uint8_t cond;
       bool S;
       uint8_t Rn;
       uint8_t Rd;
@@ -49,7 +46,6 @@ struct decodeInfo_t{
     }dpimm;
 
     struct {
-      uint8_t cond;
       bool P;
       bool U;
       bool B;
@@ -63,7 +59,6 @@ struct decodeInfo_t{
     }lsreg;
     
     struct {
-      uint8_t cond;
       bool P;
       bool U;
       bool B;
@@ -75,11 +70,11 @@ struct decodeInfo_t{
     }lsimm;
 
     struct {
-      uint8_t cond;
       bool L;
       uint32_t offset;
     }branch;
   }armInstInfo;
+  uint8_t cond;
   bool immediate; /* True => DPIMM */
   bool endBB; /* Instruction signals end of basic block */
   uint8_t* pX86Addr;
