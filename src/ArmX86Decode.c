@@ -174,7 +174,9 @@ typedef void (*translator)(void);
 #define X86_OP_MOV_TO_EAX            0xA1
 #define X86_OP_MOV_FROM_EAX          0xA3
 #define X86_OP_SUB32_FROM_EAX        0x2D
+#define X86_OP_ADD32_TO_EAX          0x05
 #define X86_OP_SUB_MEM32_FROM_EAX    0x2B
+#define X86_OP_ADD_MEM32_TO_EAX      0x01
 #define X86_OP_MOV_TO_REG            0x8B
 #define X86_OP_MOV_FROM_REG          0x89
 #define X86_OP_MOV_IMM_TO_EAX        0xB8
@@ -319,7 +321,6 @@ uint32_t sEq0Count = 0;
 #endif /* DEBUG */
 
 void armX86Decode(const struct map_t *memMap){
-  bool bConditional = FALSE;
   struct decodeInfo_t instInfo;
   uint32_t armInst;
 
@@ -355,14 +356,6 @@ void armX86Decode(const struct map_t *memMap){
     // First check the condition field. Set a jump in the code if the
     //  instruction is to be executed conditionally.
     */
-#if 0
-    if((armInst & COND_MASK) != COND_AL){
-      bConditional = TRUE;
-    }else{
-      bConditional = FALSE;
-    }
-#endif
-
     instInfo.cond = ((armInst & COND_MASK) >> COND_SHIFT);
     instInfo.pX86Addr = pX86PC;
     if(instInfo.cond != AL){
@@ -373,9 +366,6 @@ void armX86Decode(const struct map_t *memMap){
       pX86PC += x86InstCount; 
     }
 
-#if 0
-    DP_ASSERT(bConditional == FALSE,"Encountered conditional instruction\n");
-#endif
     /*
     // There are usually two source operands and one destination register for
     // data processing instruction. The compare, test and move instructions
@@ -787,7 +777,7 @@ int lsregHandler(void *pInst){
     = *(struct decodeInfo_t *)pInst;
   uint8_t count = 0;
 
-  DP("\tLoad-Store Register-Shift\n");
+  DP_ASSERT(0,"Load-Store Register-Shift not supported\n");
 
   return count;
 }
@@ -811,19 +801,23 @@ int brchHandler(void *pInst){
 OPCODE_HANDLER_RETURN
 andHandler(void *pInst){
   struct decodeInfo_t instInfo = *(struct decodeInfo_t*)pInst;
+  uint8_t count = 0;
 
   if(instInfo.immediate == FALSE){
-    DP("\tRegister ");
+    DP("Register ");
   }else{
-    DP("\tImmediate ");
+    DP("Immediate ");
   }
 
-  return 0;
+  DP_ASSERT(0,"And not supported\n");
+
+  return count;
 }
 
 OPCODE_HANDLER_RETURN
 eorHandler(void *pInst){
   struct decodeInfo_t instInfo = *(struct decodeInfo_t*)pInst;
+  uint8_t count = 0;
 
   if(instInfo.immediate == FALSE){
     DP("\tRegister ");
@@ -831,7 +825,8 @@ eorHandler(void *pInst){
     DP("\tImmediate ");
   }
 
-  return 0;
+  DP_ASSERT(0,"Eor not supported\n");
+  return count;
 }
 
 OPCODE_HANDLER_RETURN
@@ -883,9 +878,6 @@ subHandler(void *pInst){
       UNSUPPORTED;
     }
   }
-  if(DPREG_INFO.S == 0){
-    DP(" WARNING -> Updating FLAGS when prohibited\n");
-  }
 
   if(DPREG_INFO.S == TRUE){
     ADD_BYTE(X86_OP_PUSHF);
@@ -901,32 +893,121 @@ subHandler(void *pInst){
 OPCODE_HANDLER_RETURN
 rsbHandler(void *pInst){
   struct decodeInfo_t instInfo = *(struct decodeInfo_t*)pInst;
+  uint8_t count = 0;
 
-  if(instInfo.immediate == FALSE){
-    DP("Register\n");
-  }else{
-    DP("Immediate\n");
+  if(DPREG_INFO.S == TRUE){
+    ADD_BYTE(X86_OP_PUSH_MEM32);
+    ADD_BYTE(0x35); /* MOD R/M for PUSH - 0xFF /6 */
+    ADD_WORD((uintptr_t)&x86Flags);
+    ADD_BYTE(X86_OP_POPF);
+    LOG_INSTR(instInfo.pX86Addr,count);
   }
 
-  return 0;
+  if(instInfo.immediate == FALSE){
+    DP("Register ");
+    printf("\tRN = %d\nRD = %d\n",DPREG_INFO.Rn, DPREG_INFO.Rd);
+
+    ADD_BYTE(X86_OP_MOV_TO_EAX);
+    ADD_WORD((uintptr_t)&regFile[DPREG_INFO.Rm]);
+
+    ADD_BYTE(X86_OP_SUB_MEM32_FROM_EAX);
+    ADD_BYTE(0x05); /* MODR/M */
+    ADD_WORD((uintptr_t)&regFile[DPREG_INFO.Rn]);
+
+    ADD_BYTE(X86_OP_MOV_FROM_EAX);
+    ADD_WORD((uintptr_t)&regFile[DPREG_INFO.Rd]);
+    LOG_INSTR(instInfo.pX86Addr,count);
+
+    if(DPREG_INFO.shiftAmt != 0){ 
+      UNSUPPORTED;
+    }
+  }else{
+    DP("Immediate ");
+    printf("RN = %d, RD = %d\n",DPIMM_INFO.Rn, DPIMM_INFO.Rd);
+
+    DP_ASSERT(0,"Immediate Reverse subtraction not supported\n");
+
+    if(DPIMM_INFO.rotate != 0){ 
+      UNSUPPORTED;
+    }
+  }
+
+  if(DPREG_INFO.S == TRUE){
+    ADD_BYTE(X86_OP_PUSHF);
+    ADD_BYTE(X86_OP_POP_MEM32);
+    ADD_BYTE(0x05); /* MOD R/M for PUSH - 0xFF /6 */
+    ADD_WORD((uintptr_t)&x86Flags);
+    LOG_INSTR(instInfo.pX86Addr,count);
+  }
+
+  return count;
 }
 
 OPCODE_HANDLER_RETURN
 addHandler(void *pInst){
   struct decodeInfo_t instInfo = *(struct decodeInfo_t*)pInst;
+  uint8_t count = 0;
 
-  if(instInfo.immediate == FALSE){
-    DP("Register\n");
-  }else{
-    DP("Immediate\n");
+  if(DPREG_INFO.S == TRUE){
+    ADD_BYTE(X86_OP_PUSH_MEM32);
+    ADD_BYTE(0x35); /* MOD R/M for PUSH - 0xFF /6 */
+    ADD_WORD((uintptr_t)&x86Flags);
+    ADD_BYTE(X86_OP_POPF);
+    LOG_INSTR(instInfo.pX86Addr,count);
   }
 
-  return 0;
+  if(instInfo.immediate == FALSE){
+    DP("Register ");
+    printf("\tRN = %d\nRD = %d\n",DPREG_INFO.Rn, DPREG_INFO.Rd);
+
+    ADD_BYTE(X86_OP_MOV_TO_EAX);
+    ADD_WORD((uintptr_t)&regFile[DPREG_INFO.Rn]);
+
+    ADD_BYTE(X86_OP_ADD_MEM32_TO_EAX);
+    ADD_BYTE(0x05); /* MODR/M */
+    ADD_WORD((uintptr_t)&regFile[DPREG_INFO.Rm]);
+
+    ADD_BYTE(X86_OP_MOV_FROM_EAX);
+    ADD_WORD((uintptr_t)&regFile[DPREG_INFO.Rd]);
+    LOG_INSTR(instInfo.pX86Addr,count);
+
+    if(DPREG_INFO.shiftAmt != 0){ 
+      UNSUPPORTED;
+    }
+  }else{
+    DP("Immediate ");
+    printf("RN = %d, RD = %d\n",DPIMM_INFO.Rn, DPIMM_INFO.Rd);
+
+    ADD_BYTE(X86_OP_MOV_TO_EAX);
+    ADD_WORD((uintptr_t)&regFile[DPIMM_INFO.Rn]);
+
+    ADD_BYTE(X86_OP_ADD32_TO_EAX);
+    ADD_WORD((uint32_t)DPIMM_INFO.imm);
+
+    ADD_BYTE(X86_OP_MOV_FROM_EAX);
+    ADD_WORD((uintptr_t)&regFile[DPIMM_INFO.Rd]);
+    LOG_INSTR(instInfo.pX86Addr,count);
+
+    if(DPIMM_INFO.rotate != 0){ 
+      UNSUPPORTED;
+    }
+  }
+
+  if(DPREG_INFO.S == TRUE){
+    ADD_BYTE(X86_OP_PUSHF);
+    ADD_BYTE(X86_OP_POP_MEM32);
+    ADD_BYTE(0x05); /* MOD R/M for PUSH - 0xFF /6 */
+    ADD_WORD((uintptr_t)&x86Flags);
+    LOG_INSTR(instInfo.pX86Addr,count);
+  }
+
+  return count;
 }
 
 OPCODE_HANDLER_RETURN
 adcHandler(void *pInst){
   struct decodeInfo_t instInfo = *(struct decodeInfo_t*)pInst;
+  uint8_t count = 0;
 
   if(instInfo.immediate == FALSE){
     DP("\tRegister ");
@@ -934,12 +1015,14 @@ adcHandler(void *pInst){
     DP("\tImmediate ");
   }
 
-  return 0;
+  DP_ASSERT(0,"Adc not supported\n");
+  return count;
 }
 
 OPCODE_HANDLER_RETURN
 sbcHandler(void *pInst){
   struct decodeInfo_t instInfo = *(struct decodeInfo_t*)pInst;
+  uint8_t count = 0;
 
   if(instInfo.immediate == FALSE){
     DP("\tRegister ");
@@ -947,12 +1030,14 @@ sbcHandler(void *pInst){
     DP("\tImmediate ");
   }
 
-  return 0;
+  DP_ASSERT(0,"Sbc not supported\n");
+  return count;
 }
 
 OPCODE_HANDLER_RETURN
 rscHandler(void *pInst){
   struct decodeInfo_t instInfo = *(struct decodeInfo_t*)pInst;
+  uint8_t count = 0;
 
   if(instInfo.immediate == FALSE){
     DP("\tRegister ");
@@ -960,12 +1045,14 @@ rscHandler(void *pInst){
     DP("\tImmediate ");
   }
 
-  return 0;
+  DP_ASSERT(0,"Rsc not supported\n");
+  return count;
 }
 
 OPCODE_HANDLER_RETURN
 tstHandler(void *pInst){
   struct decodeInfo_t instInfo = *(struct decodeInfo_t*)pInst;
+  uint8_t count = 0;
 
   if(instInfo.immediate == FALSE){
     DP("\tRegister ");
@@ -973,12 +1060,14 @@ tstHandler(void *pInst){
     DP("\tImmediate ");
   }
 
-  return 0;
+  DP_ASSERT(0,"tst not supported\n");
+  return count;
 }
 
 OPCODE_HANDLER_RETURN
 teqHandler(void *pInst){
   struct decodeInfo_t instInfo = *(struct decodeInfo_t*)pInst;
+  uint8_t count = 0;
 
   if(instInfo.immediate == FALSE){
     DP("\tRegister ");
@@ -986,7 +1075,7 @@ teqHandler(void *pInst){
     DP("\tImmediate ");
   }
 
-  return 0;
+  return count;
 }
 
 OPCODE_HANDLER_RETURN
@@ -1048,18 +1137,22 @@ cmpHandler(void *pInst){
 OPCODE_HANDLER_RETURN
 cmnHandler(void *pInst){
   struct decodeInfo_t instInfo = *(struct decodeInfo_t*)pInst;
+  uint8_t count = 0;
 
   if(instInfo.immediate == FALSE){
     DP("\tRegister ");
   }else{
     DP("\tImmediate ");
   }
-  return 0;
+
+  DP_ASSERT(0,"Cmn not supported\n");
+  return count;
 }
 
 OPCODE_HANDLER_RETURN
 orrHandler(void *pInst){
   struct decodeInfo_t instInfo = *(struct decodeInfo_t*)pInst;
+  uint8_t count = 0;
 
   if(instInfo.immediate == FALSE){
     DP("\tRegister ");
@@ -1067,7 +1160,8 @@ orrHandler(void *pInst){
     DP("\tImmediate ");
   }
 
-  return 0;
+  DP_ASSERT(0,"Orr not supported\n");
+  return count;
 }
 
 OPCODE_HANDLER_RETURN
@@ -1113,6 +1207,7 @@ movHandler(void *pInst){
 OPCODE_HANDLER_RETURN
 bicHandler(void *pInst){
   struct decodeInfo_t instInfo = *(struct decodeInfo_t*)pInst;
+  uint8_t count = 0;
 
   if(instInfo.immediate == FALSE){
     DP("\tRegister ");
@@ -1121,12 +1216,14 @@ bicHandler(void *pInst){
   }
   printf("bic\n");
 
-  return 0;
+  DP_ASSERT(0,"Bic not supported\n");
+  return count;
 }
 
 OPCODE_HANDLER_RETURN
 mvnHandler(void *pInst){
   struct decodeInfo_t instInfo = *(struct decodeInfo_t*)pInst;
+  uint8_t count = 0;
 
   if(instInfo.immediate == FALSE){
     DP("\tRegister ");
@@ -1135,7 +1232,8 @@ mvnHandler(void *pInst){
   }
   printf("mvn\n");
 
-  return 0;
+  DP_ASSERT(0,"Mvn not supported\n");
+  return count;
 }
 
 /*****************************************************************************
