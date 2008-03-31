@@ -1,13 +1,13 @@
 #include <stdio.h>
-int foo();
-int foo(){
+int _start(){
   volatile int a,b,c;
   a = 0;
   b = 3;
-  c = a + b;
+  if(a > b){
+    c = a + b;
+  }else{
+    c = b - a;
+  }
   return c;
-}
-int _start(){
-  return foo();
 }
 
