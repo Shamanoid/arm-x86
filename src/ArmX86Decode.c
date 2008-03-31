@@ -184,9 +184,11 @@ typedef void (*translator)(void);
 #define X86_OP_PUSHF                 0x9C
 #define X86_OP_CMP_MEM32_WITH_REG    0x29
 #define X86_OP_CMP32_WITH_EAX        0x3D
+#define X86_OP_CALL                  0xE8
 #define X86_PRE_JCC                  0x0F
 #define X86_OP_JNE                   0x85
 #define X86_OP_JG                    0x8F
+#define X86_OP_JL                    0x8C
 
 #ifdef DEBUG
 
@@ -218,6 +220,16 @@ typedef void (*translator)(void);
 #define DISPLAY_REGS 
 
 #endif /* DEBUG */
+
+void callEndBBTaken(){
+  DP_HI;
+  DP_BYE;
+}
+
+void callEndBBNotTaken(){
+  DP_HI;
+  DP_BYE;
+}
 
 /*
 // A couple of convenience macros to help insert code into the translation
@@ -269,6 +281,9 @@ uint8_t handleConditional(void *pInst){
     case COND_LS:
     break;
     case COND_GE:
+      /* jl */
+      ADD_BYTE(X86_PRE_JCC)
+      ADD_BYTE(X86_OP_JL)
     break;
     case COND_LT:
     break;
@@ -316,6 +331,7 @@ void armX86Decode(const struct map_t *memMap){
   uint8_t *pX86PC = memMap->pX86Instr;
   translator x86Translator = (translator)memMap->pX86Instr;
   uint8_t *pCondJumpOffsetAddr = 0;
+  uint8_t count = 0;
 
   DP_HI;
 
@@ -333,6 +349,7 @@ void armX86Decode(const struct map_t *memMap){
   while(instInfo.endBB == FALSE){
     DP1("Processing instruction: 0x%x\n",*pArmPC);
 
+    count = 0;
     armInst = *pArmPC;
     /*
     // First check the condition field. Set a jump in the code if the
@@ -491,6 +508,25 @@ void armX86Decode(const struct map_t *memMap){
         instInfo.pX86Addr = pX86PC;
         x86InstCount = brchHandler((void *)&instInfo);
         pX86PC += x86InstCount;
+        instInfo.pX86Addr = pX86PC;
+
+        /*
+        // There is a little trick here. A conditional branch may be thought
+        // of as a branch instruction that is executed when the condition is
+        // True. So a conditional branch is treated like all other conditional
+        // instructions. However, for all other instructions, it suffices to
+        // jump beyond the instruction. However, in the case of the branch
+        // jumping beyond the instruction should equate to a branch that is not
+        // taken. So at the instruction 'beyond', I place a call to the handler
+        // for the NotTakenBranch. The offset for the conditional jump points
+        // to this call instrution.
+        */
+        ADD_BYTE(X86_OP_CALL);
+        ADD_WORD((uintptr_t)(
+          (intptr_t)&callEndBBNotTaken - (intptr_t)(pX86PC + 5)
+        ));
+        pX86PC += 5;
+
       break;
       case INST_TYPE_COPLS:
         UNSUPPORTED;
@@ -757,11 +793,17 @@ int lsregHandler(void *pInst){
 }
 
 int brchHandler(void *pInst){
-  struct decodeInfo_t instInfo __attribute__((unused))
-    = *(struct decodeInfo_t *)pInst;
+  struct decodeInfo_t instInfo = *(struct decodeInfo_t *)pInst;
   uint8_t count = 0;
 
   DP("Branch\n");
+
+  ADD_BYTE(X86_OP_CALL);
+  ADD_WORD((uintptr_t)(
+    (intptr_t)&callEndBBTaken - (intptr_t)(instInfo.pX86Addr + 5)
+  ));
+
+  ((struct decodeInfo_t *)pInst)->endBB = TRUE;
 
   return count;
 }
