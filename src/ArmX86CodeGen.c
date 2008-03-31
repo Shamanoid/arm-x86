@@ -28,7 +28,7 @@ int InsertItem(void *blockAddress, void *translatedAddress)
 
   /* memory allocation did not succeed */
   if(s == NULL)
-     return -1;
+    return -1;
 
   /* set the key and value pairs */
   s->key = blockAddress;
@@ -45,7 +45,7 @@ void FreeHashTableMemory(void)
   struct hash_struct *s;
 
   for(s = translationCache; s != NULL; s = s->hh.next)
-	free(s);
+    free(s);
 }
 
 void* GetItem(void *address)
@@ -55,7 +55,10 @@ void* GetItem(void *address)
   /* find key in hash */
   HASH_FIND(hh, translationCache, &address, sizeof(void *), s);
 
-  /* return value */
-  return s->value;
+  /* return NULL if not exists or value if exists */
+  if(s == NULL)
+    return NULL;
+  else
+    return s->value;
 }
 
