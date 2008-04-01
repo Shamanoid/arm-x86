@@ -847,9 +847,15 @@ int brchHandler(void *pInst){
 
   DP("Branch\n");
 
+  int32_t branchOffset = BRCH_INFO.offset;
+  branchOffset |= (((BRCH_INFO.offset & 0x00800000) > 0)?0xFF000000:0x00000000);
+  branchOffset = (uint32_t)((branchOffset << 2) + 
+                            (uintptr_t)instInfo.pArmAddr + 8);
+
+  DP1("Branch Address = 0x%x\n",branchOffset);
+
   ADD_BYTE(X86_OP_PUSH_IMM32);
-  ADD_WORD((uint32_t)((BRCH_INFO.offset << 2) + 
-                      (uintptr_t)instInfo.pArmAddr + 8));
+  ADD_WORD(branchOffset);
 
   ADD_BYTE(X86_OP_CALL);
   ADD_WORD((uintptr_t)(
