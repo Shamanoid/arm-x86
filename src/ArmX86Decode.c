@@ -247,8 +247,13 @@ void callEndBBTaken(void *nextBB){
   DP_BYE;
 }
 
-void callEndBBNotTaken(){
+void callEndBBNotTaken(void *nextBB){
   DP_HI;
+
+  DP1("Next BB Address = %p\n",nextBB);
+  pArmPC = nextBB;
+  decodeBasicBlock();
+
   DP_BYE;
 }
 
@@ -559,9 +564,13 @@ void decodeBasicBlock(){
         // for the NotTakenBranch. The offset for the conditional jump points
         // to this call instrution.
         */
+        count = 0;
+        ADD_BYTE(X86_OP_PUSH_IMM32);
+        ADD_WORD((uint32_t)((uintptr_t)pArmPC + 4));
+
         ADD_BYTE(X86_OP_CALL);
         ADD_WORD((uintptr_t)(
-          (intptr_t)&callEndBBNotTaken - (intptr_t)(pX86PC + 5)
+          (intptr_t)&callEndBBNotTaken - (intptr_t)(pX86PC + count + 4)
         ));
         pX86PC += 5;
 
