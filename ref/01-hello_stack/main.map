@@ -6,7 +6,7 @@ Name             Origin             Length             Attributes
 
 Linker script and memory map
 
-LOAD /tmp/ccKyT7B8.o
+LOAD /tmp/ccA3bip7.o
                 0x00008000                PROVIDE (__executable_start, 0x8000)
                 0x00008000                . = 0x8000
 
@@ -71,7 +71,7 @@ LOAD /tmp/ccKyT7B8.o
 
 .text           0x00008000       0x64
  *(.text .stub .text.* .gnu.linkonce.t.*)
- .text          0x00008000       0x64 /tmp/ccKyT7B8.o
+ .text          0x00008000       0x64 /tmp/ccA3bip7.o
                 0x00008000                _start
  *(.gnu.warning)
  *(.glue_7t)
@@ -187,7 +187,7 @@ LOAD /tmp/ccKyT7B8.o
 
 .comment        0x00000000       0x12
  *(.comment)
- .comment       0x00000000       0x12 /tmp/ccKyT7B8.o
+ .comment       0x00000000       0x12 /tmp/ccA3bip7.o
 
 .debug
  *(.debug)
@@ -204,33 +204,33 @@ LOAD /tmp/ccKyT7B8.o
 .debug_aranges  0x00000000       0x20
  *(.debug_aranges)
  .debug_aranges
-                0x00000000       0x20 /tmp/ccKyT7B8.o
+                0x00000000       0x20 /tmp/ccA3bip7.o
 
 .debug_pubnames
                 0x00000000       0x1d
  *(.debug_pubnames)
  .debug_pubnames
-                0x00000000       0x1d /tmp/ccKyT7B8.o
+                0x00000000       0x1d /tmp/ccA3bip7.o
 
 .debug_info     0x00000000      0x13d
  *(.debug_info .gnu.linkonce.wi.*)
- .debug_info    0x00000000      0x13d /tmp/ccKyT7B8.o
+ .debug_info    0x00000000      0x13d /tmp/ccA3bip7.o
 
 .debug_abbrev   0x00000000       0x57
  *(.debug_abbrev)
- .debug_abbrev  0x00000000       0x57 /tmp/ccKyT7B8.o
+ .debug_abbrev  0x00000000       0x57 /tmp/ccA3bip7.o
 
 .debug_line     0x00000000       0x38
  *(.debug_line)
- .debug_line    0x00000000       0x38 /tmp/ccKyT7B8.o
+ .debug_line    0x00000000       0x38 /tmp/ccA3bip7.o
 
 .debug_frame    0x00000000       0x30
  *(.debug_frame)
- .debug_frame   0x00000000       0x30 /tmp/ccKyT7B8.o
+ .debug_frame   0x00000000       0x30 /tmp/ccA3bip7.o
 
 .debug_str      0x00000000       0x12
  *(.debug_str)
- .debug_str     0x00000000       0x12 /tmp/ccKyT7B8.o
+ .debug_str     0x00000000       0x12 /tmp/ccA3bip7.o
 
 .debug_loc
  *(.debug_loc)

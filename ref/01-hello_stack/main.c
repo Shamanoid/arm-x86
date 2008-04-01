@@ -1,12 +1,12 @@
 #include <stdio.h>
 int _start(){
   volatile int a,b,c;
-  a = 0;
-  b = 3;
-  if(a > b){
+  a = 13;
+  b = 7;
+  if(a < b){
     c = a + b;
   }else{
-    c = b - a;
+    c = a - b;
   }
   return c;
 }

@@ -8,21 +8,21 @@ Disassembly of section .text:
     8004:	e92dd800 	stmdb	sp!, {fp, ip, lr, pc}
     8008:	e24cb004 	sub	fp, ip, #4	; 0x4
     800c:	e24dd00c 	sub	sp, sp, #12	; 0xc
-    8010:	e3a03000 	mov	r3, #0	; 0x0
+    8010:	e3a0300d 	mov	r3, #13	; 0xd
     8014:	e50b3010 	str	r3, [fp, #-16]
-    8018:	e3a03003 	mov	r3, #3	; 0x3
+    8018:	e3a03007 	mov	r3, #7	; 0x7
     801c:	e50b3014 	str	r3, [fp, #-20]
     8020:	e51b2010 	ldr	r2, [fp, #-16]
     8024:	e51b3014 	ldr	r3, [fp, #-20]
     8028:	e1520003 	cmp	r2, r3
-    802c:	da000004 	ble	8044 <_start+0x44>
+    802c:	aa000004 	bge	8044 <_start+0x44>
     8030:	e51b3010 	ldr	r3, [fp, #-16]
     8034:	e51b2014 	ldr	r2, [fp, #-20]
     8038:	e0833002 	add	r3, r3, r2
     803c:	e50b3018 	str	r3, [fp, #-24]
     8040:	ea000003 	b	8054 <_start+0x54>
-    8044:	e51b3014 	ldr	r3, [fp, #-20]
-    8048:	e51b2010 	ldr	r2, [fp, #-16]
+    8044:	e51b3010 	ldr	r3, [fp, #-16]
+    8048:	e51b2014 	ldr	r2, [fp, #-20]
     804c:	e0623003 	rsb	r3, r2, r3
     8050:	e50b3018 	str	r3, [fp, #-24]
     8054:	e51b3018 	ldr	r3, [fp, #-24]
