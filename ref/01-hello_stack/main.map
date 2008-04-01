@@ -6,7 +6,7 @@ Name             Origin             Length             Attributes
 
 Linker script and memory map
 
-LOAD /tmp/ccA3bip7.o
+LOAD /tmp/ccS1abgt.o
                 0x00008000                PROVIDE (__executable_start, 0x8000)
                 0x00008000                . = 0x8000
 
@@ -69,19 +69,20 @@ LOAD /tmp/ccA3bip7.o
 .plt
  *(.plt)
 
-.text           0x00008000       0x64
+.text           0x00008000       0x5c
  *(.text .stub .text.* .gnu.linkonce.t.*)
- .text          0x00008000       0x64 /tmp/ccA3bip7.o
-                0x00008000                _start
+ .text          0x00008000       0x5c /tmp/ccS1abgt.o
+                0x00008040                _start
+                0x00008000                foo
  *(.gnu.warning)
  *(.glue_7t)
  *(.glue_7)
 
 .fini
  *(.fini)
-                0x00008064                PROVIDE (__etext, .)
-                0x00008064                PROVIDE (_etext, .)
-                0x00008064                PROVIDE (etext, .)
+                0x0000805c                PROVIDE (__etext, .)
+                0x0000805c                PROVIDE (_etext, .)
+                0x0000805c                PROVIDE (etext, .)
 
 .rodata
  *(.rodata .rodata.* .gnu.linkonce.r.*)
@@ -91,26 +92,26 @@ LOAD /tmp/ccA3bip7.o
 
 .eh_frame_hdr
  *(.eh_frame_hdr)
-                0x00008164                . = (ALIGN (0x100) + (. & 0xff))
-                0x00008164                . = ALIGN (0x4)
-                0x00008164                PROVIDE (__preinit_array_start, .)
+                0x0000815c                . = (ALIGN (0x100) + (. & 0xff))
+                0x0000815c                . = ALIGN (0x4)
+                0x0000815c                PROVIDE (__preinit_array_start, .)
 
 .preinit_array
  *(.preinit_array)
-                0x00008164                PROVIDE (__preinit_array_end, .)
-                0x00008164                PROVIDE (__init_array_start, .)
+                0x0000815c                PROVIDE (__preinit_array_end, .)
+                0x0000815c                PROVIDE (__init_array_start, .)
 
 .init_array
  *(.init_array)
-                0x00008164                PROVIDE (__init_array_end, .)
-                0x00008164                PROVIDE (__fini_array_start, .)
+                0x0000815c                PROVIDE (__init_array_end, .)
+                0x0000815c                PROVIDE (__fini_array_start, .)
 
 .fini_array
  *(.fini_array)
-                0x00008164                PROVIDE (__fini_array_end, .)
+                0x0000815c                PROVIDE (__fini_array_end, .)
 
-.data           0x00008164        0x0
-                0x00008164                __data_start = .
+.data           0x0000815c        0x0
+                0x0000815c                __data_start = .
  *(.data .data.* .gnu.linkonce.d.*)
 
 .data1
@@ -150,22 +151,22 @@ LOAD /tmp/ccA3bip7.o
 .got
  *(.got.plt)
  *(.got)
-                0x00008164                _edata = .
-                0x00008164                PROVIDE (edata, .)
-                0x00008164                __bss_start = .
-                0x00008164                __bss_start__ = .
+                0x0000815c                _edata = .
+                0x0000815c                PROVIDE (edata, .)
+                0x0000815c                __bss_start = .
+                0x0000815c                __bss_start__ = .
 
-.bss            0x00008164        0x0
+.bss            0x0000815c        0x0
  *(.dynbss)
  *(.bss .bss.* .gnu.linkonce.b.*)
  *(COMMON)
-                0x00008164                . = ALIGN (0x4)
-                0x00008164                . = ALIGN (0x4)
-                0x00008164                _end = .
-                0x00008164                _bss_end__ = .
-                0x00008164                __bss_end__ = .
-                0x00008164                __end__ = .
-                0x00008164                PROVIDE (end, .)
+                0x0000815c                . = ALIGN (0x4)
+                0x0000815c                . = ALIGN (0x4)
+                0x0000815c                _end = .
+                0x0000815c                _bss_end__ = .
+                0x0000815c                __bss_end__ = .
+                0x0000815c                __end__ = .
+                0x0000815c                PROVIDE (end, .)
 
 .stab
  *(.stab)
@@ -187,7 +188,7 @@ LOAD /tmp/ccA3bip7.o
 
 .comment        0x00000000       0x12
  *(.comment)
- .comment       0x00000000       0x12 /tmp/ccA3bip7.o
+ .comment       0x00000000       0x12 /tmp/ccS1abgt.o
 
 .debug
  *(.debug)
@@ -204,33 +205,33 @@ LOAD /tmp/ccA3bip7.o
 .debug_aranges  0x00000000       0x20
  *(.debug_aranges)
  .debug_aranges
-                0x00000000       0x20 /tmp/ccA3bip7.o
+                0x00000000       0x20 /tmp/ccS1abgt.o
 
 .debug_pubnames
-                0x00000000       0x1d
+                0x00000000       0x25
  *(.debug_pubnames)
  .debug_pubnames
-                0x00000000       0x1d /tmp/ccA3bip7.o
+                0x00000000       0x25 /tmp/ccS1abgt.o
 
-.debug_info     0x00000000      0x13d
+.debug_info     0x00000000      0x14f
  *(.debug_info .gnu.linkonce.wi.*)
- .debug_info    0x00000000      0x13d /tmp/ccA3bip7.o
+ .debug_info    0x00000000      0x14f /tmp/ccS1abgt.o
 
-.debug_abbrev   0x00000000       0x57
+.debug_abbrev   0x00000000       0x6c
  *(.debug_abbrev)
- .debug_abbrev  0x00000000       0x57 /tmp/ccA3bip7.o
+ .debug_abbrev  0x00000000       0x6c /tmp/ccS1abgt.o
 
-.debug_line     0x00000000       0x38
+.debug_line     0x00000000       0x39
  *(.debug_line)
- .debug_line    0x00000000       0x38 /tmp/ccA3bip7.o
+ .debug_line    0x00000000       0x39 /tmp/ccS1abgt.o
 
-.debug_frame    0x00000000       0x30
+.debug_frame    0x00000000       0x50
  *(.debug_frame)
- .debug_frame   0x00000000       0x30 /tmp/ccA3bip7.o
+ .debug_frame   0x00000000       0x50 /tmp/ccS1abgt.o
 
 .debug_str      0x00000000       0x12
  *(.debug_str)
- .debug_str     0x00000000       0x12 /tmp/ccA3bip7.o
+ .debug_str     0x00000000       0x12 /tmp/ccS1abgt.o
 
 .debug_loc
  *(.debug_loc)
