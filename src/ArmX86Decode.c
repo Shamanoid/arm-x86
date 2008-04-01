@@ -1223,10 +1223,10 @@ movHandler(void *pInst){
   if(instInfo.immediate == FALSE){
     DP("Register ");
 
-    printf("Rn = %d, Rd = %d\n",DPREG_INFO.Rn, DPREG_INFO.Rd);
+    printf("Rm = %d, Rd = %d\n",DPREG_INFO.Rm, DPREG_INFO.Rd);
 
     ADD_BYTE(X86_OP_MOV_TO_EAX);
-    ADD_WORD((uintptr_t)&regFile[DPREG_INFO.Rn]);
+    ADD_WORD((uintptr_t)&regFile[DPREG_INFO.Rm]);
 
     ADD_BYTE(X86_OP_MOV_FROM_EAX);
     ADD_WORD((uintptr_t)&regFile[DPREG_INFO.Rd]);
