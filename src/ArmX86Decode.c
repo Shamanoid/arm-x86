@@ -96,7 +96,7 @@
 #define LR                      R14
 #define IP                      R15
 
-uint32_t regFile[NUM_ARM_REGISTERS] = {
+int32_t regFile[NUM_ARM_REGISTERS] = {
   0x0, 0x1, 0x2, 0x3,
   0x4, 0x5, 0x6, 0x7,
   0x8, 0x9, 0xA, 0xB,
@@ -176,7 +176,7 @@ typedef void (*translator)(void);
 #define X86_OP_SUB32_FROM_EAX        0x2D
 #define X86_OP_ADD32_TO_EAX          0x05
 #define X86_OP_SUB_MEM32_FROM_EAX    0x2B
-#define X86_OP_ADD_MEM32_TO_EAX      0x01
+#define X86_OP_ADD_MEM32_TO_EAX      0x03
 #define X86_OP_MOV_TO_REG            0x8B
 #define X86_OP_MOV_FROM_REG          0x89
 #define X86_OP_MOV_IMM_TO_EAX        0xB8
@@ -185,11 +185,13 @@ typedef void (*translator)(void);
 #define X86_OP_POP_MEM32             0x8F
 #define X86_OP_PUSHF                 0x9C
 #define X86_OP_PUSH_IMM32            0x68
-#define X86_OP_CMP_MEM32_WITH_REG    0x29
+#define X86_OP_CMP_MEM32_WITH_REG    0x39
 #define X86_OP_CMP32_WITH_EAX        0x3D
 #define X86_OP_CALL                  0xE8
 #define X86_PRE_JCC                  0x0F
 #define X86_OP_JNE                   0x85
+#define X86_OP_JGE                   0x8D
+#define X86_OP_JLE                   0x8E
 #define X86_OP_JG                    0x8F
 #define X86_OP_JL                    0x8C
 
@@ -232,12 +234,12 @@ void callEndBBTaken(void *nextBB){
 
   DP1("Next BB Address = %p\n",nextBB);
 
+  DISPLAY_REGS;
   /*
   // FIXME: How should a program end?
   // Why is the value here so large? Fix lsmultHandler
   */
   if((uintptr_t)nextBB > 0xB0000000){
-    DISPLAY_REGS;
     exit(0);
   }
 
@@ -251,6 +253,7 @@ void callEndBBNotTaken(void *nextBB){
   DP_HI;
 
   DP1("Next BB Address = %p\n",nextBB);
+  DISPLAY_REGS;
   pArmPC = nextBB;
   decodeBasicBlock();
 
@@ -572,7 +575,7 @@ void decodeBasicBlock(){
         ADD_WORD((uintptr_t)(
           (intptr_t)&callEndBBNotTaken - (intptr_t)(pX86PC + count + 4)
         ));
-        pX86PC += 5;
+        pX86PC += count;
 
       break;
       case INST_TYPE_COPLS:
@@ -1156,11 +1159,11 @@ cmpHandler(void *pInst){
     printf("Rn = %d, Rm = %d\n",DPREG_INFO.Rn, DPREG_INFO.Rm);
 
     ADD_BYTE(X86_OP_MOV_TO_EAX);
-    ADD_WORD((uintptr_t)&regFile[DPREG_INFO.Rn]);
+    ADD_WORD((uintptr_t)&regFile[DPREG_INFO.Rm]);
 
     ADD_BYTE(X86_OP_CMP_MEM32_WITH_REG);
     ADD_BYTE(0x05); /* MODR/M - EAX */
-    ADD_WORD((uintptr_t)&regFile[DPREG_INFO.Rm]);
+    ADD_WORD((uintptr_t)&regFile[DPREG_INFO.Rn]);
     LOG_INSTR(instInfo.pX86Addr,count);
 
     if(DPREG_INFO.shiftAmt != 0){ 
