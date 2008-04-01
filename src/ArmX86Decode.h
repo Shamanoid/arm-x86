@@ -71,16 +71,18 @@ struct decodeInfo_t{
 
     struct {
       bool L;
-      uint32_t offset;
+      int32_t offset;
     }branch;
   }armInstInfo;
   uint8_t cond;
   bool immediate; /* True => DPIMM */
   bool endBB; /* Instruction signals end of basic block */
   uint8_t* pX86Addr;
+  uint32_t* pArmAddr;
 };
 
 #define OPCODE_HANDLER_RETURN   int
+void decodeBasicBlock();
 void armX86Decode(const struct map_t *memMap);
 OPCODE_HANDLER_RETURN andHandler(void *pInst);
 OPCODE_HANDLER_RETURN eorHandler(void *pInst);

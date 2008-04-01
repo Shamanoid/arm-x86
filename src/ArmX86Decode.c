@@ -184,6 +184,7 @@ typedef void (*translator)(void);
 #define X86_OP_POPF                  0x9D
 #define X86_OP_POP_MEM32             0x8F
 #define X86_OP_PUSHF                 0x9C
+#define X86_OP_PUSH_IMM32            0x68
 #define X86_OP_CMP_MEM32_WITH_REG    0x29
 #define X86_OP_CMP32_WITH_EAX        0x3D
 #define X86_OP_CALL                  0xE8
@@ -223,8 +224,26 @@ typedef void (*translator)(void);
 
 #endif /* DEBUG */
 
-void callEndBBTaken(){
+uint32_t *pArmPC;
+uint8_t *pX86PC;
+
+void callEndBBTaken(void *nextBB){
   DP_HI;
+
+  DP1("Next BB Address = %p\n",nextBB);
+
+  /*
+  // FIXME: How should a program end?
+  // Why is the value here so large? Fix lsmultHandler
+  */
+  if((uintptr_t)nextBB > 0xB0000000){
+    DISPLAY_REGS;
+    exit(0);
+  }
+
+  pArmPC = nextBB;
+  decodeBasicBlock();
+
   DP_BYE;
 }
 
@@ -320,23 +339,12 @@ uint32_t sEq0Count = 0;
 
 #endif /* DEBUG */
 
+translator x86Translator;
+
 void armX86Decode(const struct map_t *memMap){
-  struct decodeInfo_t instInfo;
-  uint32_t armInst;
-
-  /*
-  // x86InstCount is number of bytes of x86 instructions
-  */
-  uint32_t x86InstCount;
-  uint32_t *pArmPC = memMap->pArmInstr;
-  uint8_t *pX86PC = memMap->pX86Instr;
-  translator x86Translator = (translator)memMap->pX86Instr;
-  uint8_t *pCondJumpOffsetAddr = 0;
-  uint8_t count = 0;
-
-  DP_HI;
-
-  DP1("x86PC = %p\n",pX86PC);
+  pArmPC = memMap->pArmInstr;
+  pX86PC = memMap->pX86Instr;
+  x86Translator = (translator)memMap->pX86Instr;
 
   /*
   // FIXME: This is a temporary initialization of the stack pointer
@@ -345,13 +353,34 @@ void armX86Decode(const struct map_t *memMap){
   regFile[0] = (uintptr_t)memMap->pArmStackPtr;
   SP = (uintptr_t)memMap->pArmStackPtr;
 
+  decodeBasicBlock();
+}
+
+void decodeBasicBlock(){
+  struct decodeInfo_t instInfo;
+  uint32_t armInst;
+
+  /*
+  // x86InstCount is number of bytes of x86 instructions
+  */
+  uint32_t x86InstCount;
+  uint8_t *pCondJumpOffsetAddr = 0;
+  uint8_t count = 0;
+
+  DP_HI;
+
+  DP1("x86PC = %p\n",pX86PC);
+
   instInfo.endBB = FALSE;
+  x86Translator = (translator)pX86PC;
 
   while(instInfo.endBB == FALSE){
     DP1("Processing instruction: 0x%x\n",*pArmPC);
 
     count = 0;
     armInst = *pArmPC;
+    instInfo.pArmAddr = pArmPC;
+
     /*
     // First check the condition field. Set a jump in the code if the
     //  instruction is to be executed conditionally.
@@ -491,6 +520,25 @@ void armX86Decode(const struct map_t *memMap){
         instInfo.pX86Addr = pX86PC;
         x86InstCount = lsmHandler((void *)&instInfo);
         pX86PC += x86InstCount;
+        instInfo.pX86Addr = pX86PC;
+
+        /*
+        // The load instruction has set the PC to a new value. Handle this
+        // as the end of a basic block.
+        */
+        if(instInfo.endBB == TRUE){
+          count = 0;
+          ADD_BYTE(X86_OP_PUSH_MEM32);
+          ADD_BYTE(0x35); /* MOD R/M for PUSH - 0xFF /6 */
+          ADD_WORD((uintptr_t)&regFile[15]);
+          pX86PC += count;
+
+          ADD_BYTE(X86_OP_CALL);
+          ADD_WORD((uintptr_t)(
+            (intptr_t)&callEndBBTaken - (intptr_t)(pX86PC + 5)
+          ));
+          pX86PC += 5;
+        }
       break;
       case INST_TYPE_BRCH:
         BRCH_INFO.L = ((armInst & BIT24_MASK) > 0?TRUE:FALSE);
@@ -541,11 +589,10 @@ void armX86Decode(const struct map_t *memMap){
   // start of the translation cache.
   */
   DP1("x86PC = %p\n",pX86PC);
-  *pX86PC = 0xC3;
 
   DISPLAY_REGS;
 
-  x86Translator();
+  asm ("jmp *x86Translator");
 
   DISPLAY_REGS;
 
@@ -788,9 +835,13 @@ int brchHandler(void *pInst){
 
   DP("Branch\n");
 
+  ADD_BYTE(X86_OP_PUSH_IMM32);
+  ADD_WORD((uint32_t)((BRCH_INFO.offset << 2) + 
+                      (uintptr_t)instInfo.pArmAddr + 8));
+
   ADD_BYTE(X86_OP_CALL);
   ADD_WORD((uintptr_t)(
-    (intptr_t)&callEndBBTaken - (intptr_t)(instInfo.pX86Addr + 5)
+    (intptr_t)&callEndBBTaken - (intptr_t)(instInfo.pX86Addr + count + 4)
   ));
 
   ((struct decodeInfo_t *)pInst)->endBB = TRUE;
