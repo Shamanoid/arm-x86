@@ -136,6 +136,10 @@ uint8_t handleConditional(void *pInst){
       ADD_BYTE(X86_OP_JNE)
     break;
     case COND_NE:
+      /* je */
+      ADD_BYTE(X86_PRE_JCC)
+      ADD_BYTE(X86_OP_JE)
+    break;
     case COND_CS:
     case COND_CC:
     case COND_MI:

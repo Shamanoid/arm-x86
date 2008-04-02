@@ -1,5 +1,5 @@
 ifneq (,$(findstring _debug,$(FLAV)))
-CFLAGS += -g
+CFLAGS += -g -DDEBUG
 endif
 
 ifneq (,$(findstring _noindex,$(FLAV)))

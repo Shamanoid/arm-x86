@@ -161,6 +161,7 @@
 #define X86_OP_CMP32_WITH_EAX        0x3D
 #define X86_OP_CALL                  0xE8
 #define X86_PRE_JCC                  0x0F
+#define X86_OP_JE                    0x84
 #define X86_OP_JNE                   0x85
 #define X86_OP_JGE                   0x8D
 #define X86_OP_JLE                   0x8E
