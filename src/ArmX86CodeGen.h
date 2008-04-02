@@ -13,7 +13,7 @@ struct hash_struct
   UT_hash_handle hh;		/* makes this structure hashable */
 };
 
-static struct hash_struct *translationCache = NULL;
+extern struct hash_struct *translationCache;
 
 int InsertItem(void *address, void *startBlockAddress);
 void FreeHashTableMemory(void);

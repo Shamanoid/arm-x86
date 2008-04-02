@@ -2,6 +2,8 @@
 #include <stdlib.h>
 #include "ArmX86CodeGen.h"
 
+struct hash_struct *translationCache = NULL;
+
 void* initX86Code(void *stat){
   //
   // Allocate space for x86 instructions. In the initial implementation, a

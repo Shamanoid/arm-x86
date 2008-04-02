@@ -1,100 +1,10 @@
 #include <stdint.h>
+#include <stdlib.h>
 #include "ArmX86Debug.h"
 #include "ArmX86Decode.h"
 #include "ArmX86Types.h"
-
-/*
-// Set of macros and global variables to deal with instructions and opcodes
-//
-// For purposes of instruction decoding, the instructions are divided into
-// families as described here. This classification is based on the bits
-// 27 down to 25 in each instruction.
-//  1. "000" DP_MISC
-//    Data Processing shift instructions
-//    Miscellaneous instructions
-//  2. "001" IMM_UNDEF
-//    Move and DP Immediate instructions
-//    Undefined instructions
-//  3. "010" LSIMM
-//    Load/Store with immediate offset
-//  4. "011" LSR_UNDEF
-//    Load/Store register instructions
-//    More Undefined instructions
-//  5. "100" LSMULT
-//    Load/Store Multiple
-//  6. "101" BRCH
-//    Branch instructions
-//  7. "110" COPLS
-//    Coprocessor Load/Store instructions
-//  8. "111" COP_SWI
-//    Coprocessor instructions
-//    Software Interrupt
-*/
-#define COND_MASK               0xF0000000  /* Mask for the condition field */
-#define COND_AL			0xE0000000  /* Condition - Always */
-#define COND_SHIFT              28
-
-#define INST_TYPE_MASK          0x0E000000  // What type of instruction?
-#define INST_TYPE_DP_MISC       0x00000000
-#define INST_TYPE_IMM_UNDEF     0x02000000
-#define INST_TYPE_LSIMM         0x04000000
-#define INST_TYPE_LSR_UNDEF     0x06000000
-#define INST_TYPE_LSMULT        0x08000000
-#define INST_TYPE_BRCH          0x0A000000
-#define INST_TYPE_COPLS         0x0C000000
-#define INST_TYPE_COP_SWI       0x0E000000
-
-#define NUM_OPCODES             16
-#define OPCODE_MASK             0x01E00000  // Mask for the opcode field
-#define OPCODE_AND              0x00000000  // AND
-#define OPCODE_EOR              0x00200000  // EOR
-#define OPCODE_SUB              0x00400000  // SUB
-#define OPCODE_RSB              0x00600000  // Reverse Subtract
-#define OPCODE_ADD              0x00800000  // ADD
-#define OPCODE_ADC              0x00A00000  // Add with carry
-#define OPCODE_SBC              0x00C00000  // Subtract with carry
-#define OPCODE_RSC              0x00E00000  // Reverse Subtract with carry
-#define OPCODE_TST              0x01000000  // Test
-#define OPCODE_TEQ              0x01200000  // Test equivalence
-#define OPCODE_CMP              0x01400000  // Compare
-#define OPCODE_CMN              0x01600000  // Compare Negated
-#define OPCODE_ORR              0x01800000  // Logical (inclusive OR)
-#define OPCODE_MOV              0x01A00000  // Move
-#define OPCODE_BIC              0x01C00000  // Bit clear
-#define OPCODE_MVN              0x01E00000  // Move not
-#define OPCODE_SHIFT            21
-
-/*
-// Set of macros and global variables to deal with registers
-*/
-#define RD_SHIFT                12
-#define RN_SHIFT                16
-#define RS_SHIFT                8
-
-#define RD(x)                   (((x) & 0x0000F000) >> RD_SHIFT)
-#define RN(x)                   (((x) & 0x000F0000) >> RN_SHIFT)
-#define RS(x)                   (((x) & 0x00000F00) >> RS_SHIFT)
-#define RM(x)                   ((x) & 0x0000000F)
-#define ROTATE(x)               RS(x)
-#define SHIFT_AMT_MASK          0x00000F80
-#define SHIFT_AMT_SHIFT         7
-#define SHIFT_TYPE_MASK         0x00000060
-#define SHIFT_TYPE_SHIFT        5
-#define OFFSET_MASK             0x00FFFFFF
-#define BIT24_MASK              0x01000000
-#define BIT23_MASK              0x00800000 
-#define BIT22_MASK              0x00400000
-#define BIT21_MASK              0x00200000
-#define BIT20_MASK              0x00100000
-
-#define NUM_ARM_REGISTERS       16  
-#define R13                     regFile[13]
-#define R14                     regFile[14]
-#define R15                     regFile[15]
-
-#define SP                      R13
-#define LR                      R14
-#define IP                      R15
+#include "ArmX86DecodePrivate.h"
+#include "ArmX86CodeGen.h"
 
 int32_t regFile[NUM_ARM_REGISTERS] = {
   0x0, 0x1, 0x2, 0x3,
@@ -103,53 +13,8 @@ int32_t regFile[NUM_ARM_REGISTERS] = {
   0xC, 0xD, 0xE, 0xF
 };
 
-/*
-// Set of macros and global variables to deal with conditions
-*/
 uint32_t cpsr;     /* ARM Program Status Register for user mode */
 uint32_t x86Flags; /* x86 Flag Register */
-
-#define N_FLAG_MASK             0x80000000
-#define Z_FLAG_MASK             0x40000000
-#define C_FLAG_MASK             0x20000000
-#define V_FLAG_MASK             0x10000000
-
-#define NEGATIVE(x)             (((x) & N_FLAG_MASK) > 0?1:0)
-#define ZERO(x)                 (((x) & Z_FLAG_MASK) > 0?1:0)
-#define CARRY(x)                (((x) & C_FLAG_MASK) > 0?1:0)
-#define OVERFLOW(x)             (((x) & V_FLAG_MASK) > 0?1:0)
-
-#define EQ                      ZER0(cpsr)      /* Z = 1            */
-#define NE                      !EQ             /* Z = 0            */
-#define CS                      CARRY(cpsr)     /* C = 1            */
-#define CC                      !CS             /* C = 0            */
-#define MI                      NEGATIVE(cpsr)  /* N = 1            */
-#define PL                      !MI             /* N = 0            */
-#define VS                      OVERFLOW(cpsr)  /* V = 1            */
-#define VC                      !VS             /* V = 0            */
-#define HI                      (CS && NE)      /* C = 1 && Z = 0   */
-#define LS                      (CC || EQ)      /* C = 0 || Z = 1   */
-#define GE                      !(MI ^ VS)      /* N == V           */
-#define LT                      (MI ^ VS)       /* N != V           */
-#define GT                      (NE && GE)      /* Z = 0 and N == V */
-#define LE                      (EQ || LT)      /* Z = 1 or  N != V */
-#define AL                      0xE
-
-#define COND_EQ                 0
-#define COND_NE                 1
-#define COND_CS                 2
-#define COND_CC                 3
-#define COND_MI                 4 
-#define COND_PL                 5
-#define COND_VS                 6
-#define COND_VC                 7
-#define COND_HI                 8
-#define COND_LS                 9
-#define COND_GE                 10
-#define COND_LT                 11
-#define COND_GT                 12 
-#define COND_LE                 13
-#define COND_UNDEF              15
 
 typedef OPCODE_HANDLER_RETURN (*opcodeHandler_t)(void *inst);
 opcodeHandler_t opcodeHandler[NUM_OPCODES] = {
@@ -167,33 +32,6 @@ opcodeHandler_t opcodeHandler[NUM_OPCODES] = {
 #define BRCH_INFO               instInfo.armInstInfo.branch
 
 typedef void (*translator)(void);
-
-/*
-// Set of macros defining x86 opcodes.
-*/
-#define X86_OP_MOV_TO_EAX            0xA1
-#define X86_OP_MOV_FROM_EAX          0xA3
-#define X86_OP_SUB32_FROM_EAX        0x2D
-#define X86_OP_ADD32_TO_EAX          0x05
-#define X86_OP_SUB_MEM32_FROM_EAX    0x2B
-#define X86_OP_ADD_MEM32_TO_EAX      0x03
-#define X86_OP_MOV_TO_REG            0x8B
-#define X86_OP_MOV_FROM_REG          0x89
-#define X86_OP_MOV_IMM_TO_EAX        0xB8
-#define X86_OP_PUSH_MEM32            0xFF
-#define X86_OP_POPF                  0x9D
-#define X86_OP_POP_MEM32             0x8F
-#define X86_OP_PUSHF                 0x9C
-#define X86_OP_PUSH_IMM32            0x68
-#define X86_OP_CMP_MEM32_WITH_REG    0x39
-#define X86_OP_CMP32_WITH_EAX        0x3D
-#define X86_OP_CALL                  0xE8
-#define X86_PRE_JCC                  0x0F
-#define X86_OP_JNE                   0x85
-#define X86_OP_JGE                   0x8D
-#define X86_OP_JLE                   0x8E
-#define X86_OP_JG                    0x8F
-#define X86_OP_JL                    0x8C
 
 #ifdef DEBUG
 
@@ -225,6 +63,12 @@ typedef void (*translator)(void);
 #define DISPLAY_REGS 
 
 #endif /* DEBUG */
+
+/*
+// Macros to help manage translation index.
+*/
+#define INDEXED_BLOCK(block) GetItem((block))
+#define INDEX_BLOCK(armBlock,x86Block) InsertItem(armBlock,x86Block) 
 
 uint32_t *pArmPC;
 uint8_t *pX86PC;
@@ -378,230 +222,233 @@ void decodeBasicBlock(){
   DP_HI;
 
   DP1("x86PC = %p\n",pX86PC);
+  DP1("armPC = %p\n",pArmPC);
 
-  instInfo.endBB = FALSE;
-  x86Translator = (translator)pX86PC;
+  if((x86Translator = (translator)INDEXED_BLOCK((void *)pArmPC)) != NULL){
+    instInfo.endBB = TRUE;
+ 
+    DP("Found previously translated block\n");
+    DP2("ARM %p -> %p\n",pArmPC,x86Translator);
+  }else{
+    DP1("Untranslated basic block at %p\n",pArmPC);
+    INDEX_BLOCK((void *)pArmPC,(void *)pX86PC);
+    instInfo.endBB = FALSE;
+    x86Translator = (translator)pX86PC;
 
-  while(instInfo.endBB == FALSE){
-    DP1("Processing instruction: 0x%x\n",*pArmPC);
+    while(instInfo.endBB == FALSE){
+      DP1("Processing instruction: 0x%x\n",*pArmPC);
 
-    count = 0;
-    armInst = *pArmPC;
-    instInfo.pArmAddr = pArmPC;
+      count = 0;
+      armInst = *pArmPC;
+      instInfo.pArmAddr = pArmPC;
 
-    /*
-    // First check the condition field. Set a jump in the code if the
-    //  instruction is to be executed conditionally.
-    */
-    instInfo.cond = ((armInst & COND_MASK) >> COND_SHIFT);
-    instInfo.pX86Addr = pX86PC;
-    if(instInfo.cond != AL){
-      x86InstCount = handleConditional((void *)&instInfo);
-      pCondJumpOffsetAddr = instInfo.pX86Addr + x86InstCount;
-      x86InstCount += 4; /* Reserve space for a 4-byte offset */
-      *(uint32_t *)pCondJumpOffsetAddr = 0; /* Set the offset to 0 at first */
-      pX86PC += x86InstCount; 
-    }
+      /*
+      // First check the condition field. Set a jump in the code if the
+      //  instruction is to be executed conditionally.
+      */
+      instInfo.cond = ((armInst & COND_MASK) >> COND_SHIFT);
+      instInfo.pX86Addr = pX86PC;
+      if(instInfo.cond != AL){
+        x86InstCount = handleConditional((void *)&instInfo);
+        pCondJumpOffsetAddr = instInfo.pX86Addr + x86InstCount;
+        x86InstCount += 4; /* Reserve space for a 4-byte offset */
+        *(uint32_t *)pCondJumpOffsetAddr = 0; /* Set the offset to 0 at first */
+        pX86PC += x86InstCount; 
+      }
 
-    /*
-    // There are usually two source operands and one destination register for
-    // data processing instruction. The compare, test and move instructions
-    // are exceptions. Some of them have only one source operand and other
-    // do not have a destination register.
-    */
+      /*
+      // There are usually two source operands and one destination register for
+      // data processing instruction. The compare, test and move instructions
+      // are exceptions. Some of them have only one source operand and other
+      // do not have a destination register.
+      */
 
-    /*
-    // Instructions are decoded by family
-    */
-    switch(armInst & INST_TYPE_MASK){
-      case INST_TYPE_DP_MISC:
-        /*
-        // There are two conditions that help distinguish an instruction
-        // as a data processing instruction:
-        //   Bit 4 and Bit 7 should not both be '1'
-        //   In case the top two bits of the opcode are "10", the S bit
-        //   should be a '1'
-        */
-        if(((armInst & 0x01900000) != 0x01000000) && 
-          ((armInst & 0x00000090) != 0x00000090)){
-          DPREG_INFO.Rn = RN(armInst);
-          DPREG_INFO.Rm = RM(armInst);
-          DPREG_INFO.Rd = RD(armInst);
-          DPREG_INFO.S = ((armInst & BIT20_MASK) > 0?TRUE:FALSE);
+      /*
+      // Instructions are decoded by family
+      */
+      switch(armInst & INST_TYPE_MASK){
+        case INST_TYPE_DP_MISC:
+          /*
+          // There are two conditions that help distinguish an instruction
+          // as a data processing instruction:
+          //   Bit 4 and Bit 7 should not both be '1'
+          //   In case the top two bits of the opcode are "10", the S bit
+          //   should be a '1'
+          */
+          if(((armInst & 0x01900000) != 0x01000000) && 
+            ((armInst & 0x00000090) != 0x00000090)){
+            DPREG_INFO.Rn = RN(armInst);
+            DPREG_INFO.Rm = RM(armInst);
+            DPREG_INFO.Rd = RD(armInst);
+            DPREG_INFO.S = ((armInst & BIT20_MASK) > 0?TRUE:FALSE);
 
 #ifdef DEBUG
-          if(DPREG_INFO.S == TRUE){
-            sEq1Count++;
-          }else{
-            sEq0Count++;
-          }
+            if(DPREG_INFO.S == TRUE){
+              sEq1Count++;
+            }else{
+              sEq0Count++;
+            }
 #endif /* DEBUG */
 
+            instInfo.pX86Addr = pX86PC;
+            instInfo.immediate = FALSE;
+            DPREG_INFO.shiftType = 
+              ((armInst & SHIFT_TYPE_MASK) >> SHIFT_TYPE_SHIFT);
+            if((armInst & 0x00000010) == 0){
+              DPREG_INFO.shiftAmt = 
+                ((armInst & SHIFT_AMT_MASK) >> SHIFT_AMT_SHIFT);
+              DPREG_INFO.shiftImm = TRUE;
+            }else{
+              DPREG_INFO.Rs = RS(armInst);
+              DPREG_INFO.shiftImm = FALSE;
+            }
+            x86InstCount = 
+              (opcodeHandler[((armInst & OPCODE_MASK) >> OPCODE_SHIFT)])
+              ((void *)&instInfo);
+            pX86PC += x86InstCount;
+          }else{
+            UNSUPPORTED;
+          }
+        break;
+        case INST_TYPE_IMM_UNDEF:
+          if((armInst & 0x01900000) != 0x01000000){
+            DPIMM_INFO.Rn = RN(armInst);
+            DPIMM_INFO.Rd = RD(armInst);
+            DPIMM_INFO.rotate = ROTATE(armInst);
+            DPIMM_INFO.imm = (armInst & 0x000000FF);
+            DPIMM_INFO.S = ((armInst & BIT20_MASK) >0?TRUE:FALSE);
+
+#ifdef DEBUG
+            if(DPREG_INFO.S == TRUE){
+              sEq1Count++;
+            }else{
+              sEq0Count++;
+            }
+#endif /* DEBUG */
+
+            instInfo.pX86Addr = pX86PC;
+            instInfo.immediate = TRUE;
+            x86InstCount = 
+              (opcodeHandler[((armInst & OPCODE_MASK) >> OPCODE_SHIFT)])
+              ((void *)&instInfo);
+            pX86PC += x86InstCount;
+          }else{
+            UNSUPPORTED;
+          }
+        break;
+        case INST_TYPE_LSIMM:
+          LSIMM_INFO.P = ((armInst & BIT24_MASK) > 0?TRUE:FALSE);
+          LSIMM_INFO.U = ((armInst & BIT23_MASK) > 0?TRUE:FALSE);
+          LSIMM_INFO.B = ((armInst & BIT22_MASK) > 0?TRUE:FALSE);
+          LSIMM_INFO.W = ((armInst & BIT21_MASK) > 0?TRUE:FALSE);
+          LSIMM_INFO.L = ((armInst & BIT20_MASK) > 0?TRUE:FALSE);
+          LSIMM_INFO.Rn = RN(armInst);
+          LSIMM_INFO.Rd = RD(armInst);
+          LSIMM_INFO.imm = (armInst & 0x00000FFF);
           instInfo.pX86Addr = pX86PC;
-          instInfo.immediate = FALSE;
-          DPREG_INFO.shiftType = 
-            ((armInst & SHIFT_TYPE_MASK) >> SHIFT_TYPE_SHIFT);
+          x86InstCount = lsimmHandler((void *)&instInfo);
+          pX86PC += x86InstCount;
+        break;
+        case INST_TYPE_LSR_UNDEF:
           if((armInst & 0x00000010) == 0){
-            DPREG_INFO.shiftAmt = 
+            LSREG_INFO.P = ((armInst & BIT24_MASK) > 0?TRUE:FALSE);
+            LSREG_INFO.U = ((armInst & BIT23_MASK) > 0?TRUE:FALSE);
+            LSREG_INFO.B = ((armInst & BIT22_MASK) > 0?TRUE:FALSE);
+            LSREG_INFO.W = ((armInst & BIT21_MASK) > 0?TRUE:FALSE);
+            LSREG_INFO.L = ((armInst & BIT20_MASK) > 0?TRUE:FALSE);
+            LSREG_INFO.Rn = RN(armInst);
+            LSREG_INFO.Rm = RM(armInst);
+            LSREG_INFO.Rd = RD(armInst);
+            LSREG_INFO.shiftAmt = 
               ((armInst & SHIFT_AMT_MASK) >> SHIFT_AMT_SHIFT);
-            DPREG_INFO.shiftImm = TRUE;
+            LSREG_INFO.shiftType = 
+              ((armInst & SHIFT_TYPE_MASK) >> SHIFT_TYPE_SHIFT);
+            instInfo.pX86Addr = pX86PC;
+            x86InstCount = lsregHandler((void *)&instInfo);
+            pX86PC += x86InstCount;
           }else{
-            DPREG_INFO.Rs = RS(armInst);
-            DPREG_INFO.shiftImm = FALSE;
+            UNSUPPORTED;
           }
-          x86InstCount = 
-            (opcodeHandler[((armInst & OPCODE_MASK) >> OPCODE_SHIFT)])
-            ((void *)&instInfo);
+        break;
+        case INST_TYPE_LSMULT:
+          LSMULT_INFO.Rn = RN(armInst);
+          LSMULT_INFO.regList = armInst & 0x0000FFFF;
+          LSMULT_INFO.P = ((armInst & BIT24_MASK) > 0?TRUE:FALSE);
+          LSMULT_INFO.U = ((armInst & BIT23_MASK) > 0?TRUE:FALSE);
+          LSMULT_INFO.S = ((armInst & BIT22_MASK) > 0?TRUE:FALSE);
+          LSMULT_INFO.W = ((armInst & BIT21_MASK) > 0?TRUE:FALSE);
+          LSMULT_INFO.L = ((armInst & BIT20_MASK) > 0?TRUE:FALSE);
+          instInfo.pX86Addr = pX86PC;
+          x86InstCount = lsmHandler((void *)&instInfo);
           pX86PC += x86InstCount;
-        }else{
-          UNSUPPORTED;
-        }
-      break;
-      case INST_TYPE_IMM_UNDEF:
-        if((armInst & 0x01900000) != 0x01000000){
-          DPIMM_INFO.Rn = RN(armInst);
-          DPIMM_INFO.Rd = RD(armInst);
-          DPIMM_INFO.rotate = ROTATE(armInst);
-          DPIMM_INFO.imm = (armInst & 0x000000FF);
-          DPIMM_INFO.S = ((armInst & BIT20_MASK) >0?TRUE:FALSE);
+          instInfo.pX86Addr = pX86PC;
 
-#ifdef DEBUG
-          if(DPREG_INFO.S == TRUE){
-            sEq1Count++;
-          }else{
-            sEq0Count++;
+          /*
+          // The load instruction has set the PC to a new value. Handle this
+          // as the end of a basic block.
+          */
+          if(instInfo.endBB == TRUE){
+            count = 0;
+            ADD_BYTE(X86_OP_PUSH_MEM32);
+            ADD_BYTE(0x35); /* MOD R/M for PUSH - 0xFF /6 */
+            ADD_WORD((uintptr_t)&regFile[15]);
+            pX86PC += count;
+
+            ADD_BYTE(X86_OP_CALL);
+            ADD_WORD((uintptr_t)(
+              (intptr_t)&callEndBBTaken - (intptr_t)(pX86PC + 5)
+            ));
+            pX86PC += 5;
           }
-#endif /* DEBUG */
-
+        break;
+        case INST_TYPE_BRCH:
+          BRCH_INFO.L = ((armInst & BIT24_MASK) > 0?TRUE:FALSE);
+          BRCH_INFO.offset = (armInst & OFFSET_MASK);
           instInfo.pX86Addr = pX86PC;
-          instInfo.immediate = TRUE;
-          x86InstCount = 
-            (opcodeHandler[((armInst & OPCODE_MASK) >> OPCODE_SHIFT)])
-            ((void *)&instInfo);
+          x86InstCount = brchHandler((void *)&instInfo);
           pX86PC += x86InstCount;
-        }else{
-          UNSUPPORTED;
-        }
-      break;
-      case INST_TYPE_LSIMM:
-        LSIMM_INFO.P = ((armInst & BIT24_MASK) > 0?TRUE:FALSE);
-        LSIMM_INFO.U = ((armInst & BIT23_MASK) > 0?TRUE:FALSE);
-        LSIMM_INFO.B = ((armInst & BIT22_MASK) > 0?TRUE:FALSE);
-        LSIMM_INFO.W = ((armInst & BIT21_MASK) > 0?TRUE:FALSE);
-        LSIMM_INFO.L = ((armInst & BIT20_MASK) > 0?TRUE:FALSE);
-        LSIMM_INFO.Rn = RN(armInst);
-        LSIMM_INFO.Rd = RD(armInst);
-        LSIMM_INFO.imm = (armInst & 0x00000FFF);
-        instInfo.pX86Addr = pX86PC;
-        x86InstCount = lsimmHandler((void *)&instInfo);
-        pX86PC += x86InstCount;
-      break;
-      case INST_TYPE_LSR_UNDEF:
-        if((armInst & 0x00000010) == 0){
-          LSREG_INFO.P = ((armInst & BIT24_MASK) > 0?TRUE:FALSE);
-          LSREG_INFO.U = ((armInst & BIT23_MASK) > 0?TRUE:FALSE);
-          LSREG_INFO.B = ((armInst & BIT22_MASK) > 0?TRUE:FALSE);
-          LSREG_INFO.W = ((armInst & BIT21_MASK) > 0?TRUE:FALSE);
-          LSREG_INFO.L = ((armInst & BIT20_MASK) > 0?TRUE:FALSE);
-          LSREG_INFO.Rn = RN(armInst);
-          LSREG_INFO.Rm = RM(armInst);
-          LSREG_INFO.Rd = RD(armInst);
-          LSREG_INFO.shiftAmt = 
-            ((armInst & SHIFT_AMT_MASK) >> SHIFT_AMT_SHIFT);
-          LSREG_INFO.shiftType = 
-            ((armInst & SHIFT_TYPE_MASK) >> SHIFT_TYPE_SHIFT);
           instInfo.pX86Addr = pX86PC;
-          x86InstCount = lsregHandler((void *)&instInfo);
-          pX86PC += x86InstCount;
-        }else{
-          UNSUPPORTED;
-        }
-      break;
-      case INST_TYPE_LSMULT:
-        LSMULT_INFO.Rn = RN(armInst);
-        LSMULT_INFO.regList = armInst & 0x0000FFFF;
-        LSMULT_INFO.P = ((armInst & BIT24_MASK) > 0?TRUE:FALSE);
-        LSMULT_INFO.U = ((armInst & BIT23_MASK) > 0?TRUE:FALSE);
-        LSMULT_INFO.S = ((armInst & BIT22_MASK) > 0?TRUE:FALSE);
-        LSMULT_INFO.W = ((armInst & BIT21_MASK) > 0?TRUE:FALSE);
-        LSMULT_INFO.L = ((armInst & BIT20_MASK) > 0?TRUE:FALSE);
-        instInfo.pX86Addr = pX86PC;
-        x86InstCount = lsmHandler((void *)&instInfo);
-        pX86PC += x86InstCount;
-        instInfo.pX86Addr = pX86PC;
 
-        /*
-        // The load instruction has set the PC to a new value. Handle this
-        // as the end of a basic block.
-        */
-        if(instInfo.endBB == TRUE){
+          /*
+          // There is a little trick here. A conditional branch may be thought
+          // of as a branch instruction that is executed when the condition is
+          // True. So a conditional branch is treated like all other conditional
+          // instructions. However, for all other instructions, it suffices to
+          // jump beyond the instruction. However, in the case of the branch
+          // jumping beyond the instruction should equate to a branch that is 
+          // untaken. So at the instruction 'beyond', place a call to the 
+          // handler for the NotTakenBranch. The offset for the conditional
+          //  jump points to this call instrution.
+          */
           count = 0;
-          ADD_BYTE(X86_OP_PUSH_MEM32);
-          ADD_BYTE(0x35); /* MOD R/M for PUSH - 0xFF /6 */
-          ADD_WORD((uintptr_t)&regFile[15]);
-          pX86PC += count;
+          ADD_BYTE(X86_OP_PUSH_IMM32);
+          ADD_WORD((uint32_t)((uintptr_t)pArmPC + 4));
 
           ADD_BYTE(X86_OP_CALL);
           ADD_WORD((uintptr_t)(
-            (intptr_t)&callEndBBTaken - (intptr_t)(pX86PC + 5)
+            (intptr_t)&callEndBBNotTaken - (intptr_t)(pX86PC + count + 4)
           ));
-          pX86PC += 5;
-        }
-      break;
-      case INST_TYPE_BRCH:
-        BRCH_INFO.L = ((armInst & BIT24_MASK) > 0?TRUE:FALSE);
-        BRCH_INFO.offset = (armInst & OFFSET_MASK);
-        instInfo.pX86Addr = pX86PC;
-        x86InstCount = brchHandler((void *)&instInfo);
-        pX86PC += x86InstCount;
-        instInfo.pX86Addr = pX86PC;
+          pX86PC += count;
+        break;
+        case INST_TYPE_COPLS:
+          UNSUPPORTED;
+        break;
+        case INST_TYPE_COP_SWI:
+          UNSUPPORTED;
+        break;
+        default:
+          UNSUPPORTED;
+        break;
+      }
+      if(instInfo.cond != AL){
+        *(uint32_t *)pCondJumpOffsetAddr = x86InstCount;
+      }
 
-        /*
-        // There is a little trick here. A conditional branch may be thought
-        // of as a branch instruction that is executed when the condition is
-        // True. So a conditional branch is treated like all other conditional
-        // instructions. However, for all other instructions, it suffices to
-        // jump beyond the instruction. However, in the case of the branch
-        // jumping beyond the instruction should equate to a branch that is not
-        // taken. So at the instruction 'beyond', I place a call to the handler
-        // for the NotTakenBranch. The offset for the conditional jump points
-        // to this call instrution.
-        */
-        count = 0;
-        ADD_BYTE(X86_OP_PUSH_IMM32);
-        ADD_WORD((uint32_t)((uintptr_t)pArmPC + 4));
-
-        ADD_BYTE(X86_OP_CALL);
-        ADD_WORD((uintptr_t)(
-          (intptr_t)&callEndBBNotTaken - (intptr_t)(pX86PC + count + 4)
-        ));
-        pX86PC += count;
-
-      break;
-      case INST_TYPE_COPLS:
-        UNSUPPORTED;
-      break;
-      case INST_TYPE_COP_SWI:
-        UNSUPPORTED;
-      break;
-      default:
-        UNSUPPORTED;
-      break;
+      pArmPC++;
     }
-    if(instInfo.cond != AL){
-      *(uint32_t *)pCondJumpOffsetAddr = x86InstCount;
-    }
-
-    pArmPC++;
-  }
   
-  /*
-  // For the moment, I insert a return following the last instruction
-  // that is in the translation cache. Then I make a call to the
-  // start of the translation cache.
-  */
-  DP1("x86PC = %p\n",pX86PC);
-
+    DP1("x86PC = %p\n",pX86PC);
+  }
   DISPLAY_REGS;
 
   asm ("jmp *x86Translator");
