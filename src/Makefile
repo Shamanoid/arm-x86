@@ -1,26 +1,41 @@
-CC=	gcc
-CFLAGS += -Wall
+ifneq (,$(findstring _debug,$(FLAV)))
+CFLAGS += -g
+endif
+
+ifneq (,$(findstring _noindex,$(FLAV)))
+CFLAGS += -DNOINDEX
+endif
+
+CC = gcc
+CFLAGS += -Wall -O4
+LOPTS = -Wl,-Ttext -Wl,90000000 -Wl,-Tbss -Wl,A0000000 -Wl,-Tdata -Wl,B0000000 -Wl,-Map -Wl,arm$(FLAV).map
+
 OBJDUMP= objdump
 
-all: 	release debug
+all: 	exec
 
 INC=	ArmX86Types.h	\
 	ArmX86ElfLoad.h	\
 	ArmX86Decode.h	\
 	ArmX86CodeGen.h	\
 
-SRC= 	ArmX86.c	\
-	ArmX86ElfLoad.c	\
-	ArmX86Decode.c	\
-	ArmX86CodeGen.c	\
+OBJ= 	ArmX86$(FLAV).o	\
+	ArmX86ElfLoad$(FLAV).o	\
+	ArmX86Decode$(FLAV).o	\
+	ArmX86CodeGen$(FLAV).o	\
 
-release: 	$(SRC) $(INC)
-		$(CC) $(CFLAGS) $(SRC) -g -O4 -Wl,-Ttext -Wl,90000000 -Wl,-Tbss -Wl,A0000000 -Wl,-Tdata -Wl,B0000000 -Wl,-Map -Wl,arm_rel.map -o arm
-		$(OBJDUMP) -dD ./arm > ArmX86.dis
+ArmX86$(FLAV).o:	ArmX86.c $(INC)
+			$(CC) $(CFLAGS) ArmX86.c -c -o $@
+ArmX86Decode$(FLAV).o:	ArmX86Decode.c ArmX86DecodePrivate.h $(INC)
+			$(CC) $(CFLAGS) ArmX86Decode.c -c -o $@
+ArmX86ElfLoad$(FLAV).o:ArmX86ElfLoad.c $(INC)
+			$(CC) $(CFLAGS) ArmX86ElfLoad.c -c -o $@
+ArmX86CodeGen$(FLAV).o:ArmX86CodeGen.c $(INC)
+			$(CC) $(CFLAGS) ArmX86CodeGen.c -c -o $@
 
-debug:		$(SRC) $(INC)
-		$(CC) $(CFLAGS) -DDEBUG -g -O4 $(SRC) -Wl,-Ttext -Wl,0x90000000 -Wl,-Tbss -Wl,0xA0000000 -Wl,-Tdata -Wl,0xB0000000 -Wl,-Map -Wl,arm_dbg.map -o arm
-		$(OBJDUMP) -dD ./arm > ArmX86.dis
+exec:	 	$(OBJ)
+		$(CC) $(OBJ) $(LOPTS) -o arm$(FLAV)
+		$(OBJDUMP) -dD ./arm$(FLAV) > ArmX86$(FLAV).dis
 
 clean:
-		rm -rf *.o *.map arm
+		rm -rf *.o *.map arm arm_debug arm_debug_noindex arm_noindex *.dis

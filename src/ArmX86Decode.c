@@ -136,31 +136,24 @@ uint8_t handleConditional(void *pInst){
       ADD_BYTE(X86_OP_JNE)
     break;
     case COND_NE:
-    break;
     case COND_CS:
-    break;
     case COND_CC:
-    break;
     case COND_MI:
-    break;
     case COND_PL:
-    break;
     case COND_VS:
-    break;
     case COND_VC:
-    break;
     case COND_HI:
-    break;
     case COND_LS:
-    break;
+      DP_ASSERT(0,"Unimplemented flag check\n");
+      break;
     case COND_GE:
       /* jl */
       ADD_BYTE(X86_PRE_JCC)
       ADD_BYTE(X86_OP_JL)
     break;
     case COND_LT:
-    break;
     case COND_GT:
+      DP_ASSERT(0,"Unimplemented flag check\n");
     break;
     case COND_LE:
       /* jg */
@@ -231,7 +224,11 @@ void decodeBasicBlock(){
     DP2("ARM %p -> %p\n",pArmPC,x86Translator);
   }else{
     DP1("Untranslated basic block at %p\n",pArmPC);
+
+#ifndef NOINDEX
     INDEX_BLOCK((void *)pArmPC,(void *)pX86PC);
+#endif /* NOINDEX */
+
     instInfo.endBB = FALSE;
     x86Translator = (translator)pX86PC;
 
@@ -870,6 +867,7 @@ addHandler(void *pInst){
     ADD_WORD((uintptr_t)&x86Flags);
     ADD_BYTE(X86_OP_POPF);
     LOG_INSTR(instInfo.pX86Addr,count);
+    DP("Loading Flags\n");
   }
 
   if(instInfo.immediate == FALSE){
@@ -915,6 +913,7 @@ addHandler(void *pInst){
     ADD_BYTE(0x05); /* MOD R/M for PUSH - 0xFF /6 */
     ADD_WORD((uintptr_t)&x86Flags);
     LOG_INSTR(instInfo.pX86Addr,count);
+    DP("Storing Flags\n");
   }
 
   return count;
