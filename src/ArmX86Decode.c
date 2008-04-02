@@ -81,9 +81,8 @@ void callEndBBTaken(void *nextBB){
   DISPLAY_REGS;
   /*
   // FIXME: How should a program end?
-  // Why is the value here so large? Fix lsmultHandler
   */
-  if((uintptr_t)nextBB > 0xB0000000){
+  if(nextBB == NULL){
     exit(0);
   }
 
@@ -199,8 +198,9 @@ void armX86Decode(const struct map_t *memMap){
   // FIXME: This is a temporary initialization of the stack pointer
   // to some place that the os is happy letting me access.
   */
-  regFile[0] = (uintptr_t)memMap->pArmStackPtr;
+  PC = (uintptr_t)memMap->pArmInstr;
   SP = (uintptr_t)memMap->pArmStackPtr;
+  LR = 0;
 
   decodeBasicBlock();
 }
@@ -421,15 +421,17 @@ void decodeBasicBlock(){
           // handler for the NotTakenBranch. The offset for the conditional
           //  jump points to this call instrution.
           */
-          count = 0;
-          ADD_BYTE(X86_OP_PUSH_IMM32);
-          ADD_WORD((uint32_t)((uintptr_t)pArmPC + 4));
+          if(instInfo.cond != AL){
+            count = 0;
+            ADD_BYTE(X86_OP_PUSH_IMM32);
+            ADD_WORD((uint32_t)((uintptr_t)pArmPC + 4));
 
-          ADD_BYTE(X86_OP_CALL);
-          ADD_WORD((uintptr_t)(
-            (intptr_t)&callEndBBNotTaken - (intptr_t)(pX86PC + count + 4)
-          ));
-          pX86PC += count;
+            ADD_BYTE(X86_OP_CALL);
+            ADD_WORD((uintptr_t)(
+              (intptr_t)&callEndBBNotTaken - (intptr_t)(pX86PC + count + 4)
+            ));
+            pX86PC += count;
+          }
         break;
         case INST_TYPE_COPLS:
           UNSUPPORTED;
@@ -545,16 +547,20 @@ int lsmHandler(void *pInst){
   struct decodeInfo_t instInfo
     = *(struct decodeInfo_t *)pInst;
   uint8_t count = 0;
-  uint8_t i;
+  int8_t i, istart, iend, idelta;
   uint32_t disp = 0;
 
   DP("Load-Store Multiple\n");
+
+  istart = ((LSMULT_INFO.U == 1)?0:(NUM_ARM_REGISTERS - 1));
+  iend = ((LSMULT_INFO.U == 1)?NUM_ARM_REGISTERS:-1);
+  idelta = ((LSMULT_INFO.U == 1)?1:-1);
 
   ADD_BYTE(X86_OP_MOV_TO_REG);
   ADD_BYTE(0x15) /* MODR/M - Mov from disp32 to edx */
   ADD_WORD((uintptr_t)&regFile[LSMULT_INFO.Rn]);
 
-  for(i=0; i<NUM_ARM_REGISTERS; i++){
+  for(i=istart; i != iend; i += idelta){
     if((LSMULT_INFO.regList & (0x00000001 << i)) == 0){
       continue;
     }
@@ -608,6 +614,16 @@ int lsmHandler(void *pInst){
       */
       if(i == 15){
         ((struct decodeInfo_t *)pInst)->endBB = TRUE;
+
+        ADD_BYTE(X86_OP_PUSH_MEM32);
+        ADD_BYTE(0x35); /* MOD R/M for PUSH - 0xFF /6 */
+        ADD_WORD((uintptr_t)&PC);
+
+        ADD_BYTE(X86_OP_CALL);
+        ADD_WORD((uintptr_t)(
+          (intptr_t)&callEndBBTaken - (intptr_t)(instInfo.pX86Addr + count + 4)
+        ));
+        LOG_INSTR(instInfo.pX86Addr,count);
       }
     }
   }
@@ -661,6 +677,16 @@ int lsimmHandler(void *pInst){
     */
     if(LSIMM_INFO.Rd == 15){
       ((struct decodeInfo_t *)pInst)->endBB = TRUE;
+
+      ADD_BYTE(X86_OP_PUSH_MEM32);
+      ADD_BYTE(0x35); /* MOD R/M for PUSH - 0xFF /6 */
+      ADD_WORD((uintptr_t)&PC);
+
+      ADD_BYTE(X86_OP_CALL);
+      ADD_WORD((uintptr_t)(
+        (intptr_t)&callEndBBTaken - (intptr_t)(instInfo.pX86Addr + count + 4)
+      ));
+      LOG_INSTR(instInfo.pX86Addr,count);
     };
   }else{
     DP("Store ");
@@ -697,6 +723,18 @@ int brchHandler(void *pInst){
   uint8_t count = 0;
 
   DP("Branch\n");
+
+  if(BRCH_INFO.L == TRUE){
+    DP("Branch and Link Instruction\n");
+    DP1("Link Address = 0x%x\n",(uintptr_t)instInfo.pArmAddr + 4);
+
+    ADD_BYTE(X86_OP_MOV_IMM_TO_EAX);
+    ADD_WORD((uintptr_t) instInfo.pArmAddr + 4);
+
+    ADD_BYTE(X86_OP_MOV_FROM_EAX);
+    ADD_WORD((uintptr_t)&LR);
+    LOG_INSTR(instInfo.pX86Addr,count);
+  }
 
   int32_t branchOffset = BRCH_INFO.offset;
   branchOffset |= (((BRCH_INFO.offset & 0x00800000) > 0)?0xFF000000:0x00000000);

@@ -96,7 +96,7 @@
 
 #define SP                      R13
 #define LR                      R14
-#define IP                      R15
+#define PC                      R15
 
 #define N_FLAG_MASK             0x80000000
 #define Z_FLAG_MASK             0x40000000
