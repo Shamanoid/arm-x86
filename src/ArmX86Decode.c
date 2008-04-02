@@ -619,6 +619,9 @@ int lsmHandler(void *pInst){
     ADD_BYTE(X86_OP_MOV_IMM_TO_EAX);
     ADD_WORD((int32_t)disp *(LSMULT_INFO.U == 0?-1:1))
 
+    ADD_BYTE(X86_OP_ADD_REG_TO_REG);
+    ADD_BYTE(0xC2); /* EDX and EAX, EAX is the destination */
+
     ADD_BYTE(X86_OP_MOV_FROM_EAX);
     ADD_WORD((uintptr_t)&regFile[LSMULT_INFO.Rn]);
     LOG_INSTR(instInfo.pX86Addr,count);

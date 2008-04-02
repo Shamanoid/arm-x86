@@ -167,6 +167,7 @@
 #define X86_OP_JLE                   0x8E
 #define X86_OP_JG                    0x8F
 #define X86_OP_JL                    0x8C
+#define X86_OP_ADD_REG_TO_REG        0x03
 
 #define UNSUPPORTED              DP_ASSERT(0,"Unsupported ARM instruction\n")
 typedef enum {
