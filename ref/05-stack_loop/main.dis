@@ -7,25 +7,28 @@ Disassembly of section .text:
     8000:	e1a0c00d 	mov	ip, sp
     8004:	e92dd800 	stmdb	sp!, {fp, ip, lr, pc}
     8008:	e24cb004 	sub	fp, ip, #4	; 0x4
-    800c:	e24dd008 	sub	sp, sp, #8	; 0x8
+    800c:	e24dd00c 	sub	sp, sp, #12	; 0xc
     8010:	e3a0300a 	mov	r3, #10	; 0xa
     8014:	e50b3010 	str	r3, [fp, #-16]
-    8018:	e3a03000 	mov	r3, #0	; 0x0
-    801c:	e50b3014 	str	r3, [fp, #-20]
-    8020:	e51b2014 	ldr	r2, [fp, #-20]
-    8024:	e51b3010 	ldr	r3, [fp, #-16]
-    8028:	e1520003 	cmp	r2, r3
-    802c:	aa000006 	bge	804c <_start+0x4c>
-    8030:	e51b3010 	ldr	r3, [fp, #-16]
-    8034:	e2833001 	add	r3, r3, #1	; 0x1
-    8038:	e50b3010 	str	r3, [fp, #-16]
-    803c:	e51b3014 	ldr	r3, [fp, #-20]
-    8040:	e2833001 	add	r3, r3, #1	; 0x1
-    8044:	e50b3014 	str	r3, [fp, #-20]
-    8048:	eafffff4 	b	8020 <_start+0x20>
-    804c:	e1a00003 	mov	r0, r3
-    8050:	e24bd00c 	sub	sp, fp, #12	; 0xc
-    8054:	e89da800 	ldmia	sp, {fp, sp, pc}
+    8018:	e3a0305a 	mov	r3, #90	; 0x5a
+    801c:	e50b3018 	str	r3, [fp, #-24]
+    8020:	e3a03000 	mov	r3, #0	; 0x0
+    8024:	e50b3014 	str	r3, [fp, #-20]
+    8028:	e51b2014 	ldr	r2, [fp, #-20]
+    802c:	e51b3010 	ldr	r3, [fp, #-16]
+    8030:	e1520003 	cmp	r2, r3
+    8034:	aa000006 	bge	8054 <_start+0x54>
+    8038:	e51b3018 	ldr	r3, [fp, #-24]
+    803c:	e2833001 	add	r3, r3, #1	; 0x1
+    8040:	e50b3018 	str	r3, [fp, #-24]
+    8044:	e51b3014 	ldr	r3, [fp, #-20]
+    8048:	e2833001 	add	r3, r3, #1	; 0x1
+    804c:	e50b3014 	str	r3, [fp, #-20]
+    8050:	eafffff4 	b	8028 <_start+0x28>
+    8054:	e51b3018 	ldr	r3, [fp, #-24]
+    8058:	e1a00003 	mov	r0, r3
+    805c:	e24bd00c 	sub	sp, fp, #12	; 0xc
+    8060:	e89da800 	ldmia	sp, {fp, sp, pc}
 Disassembly of section .comment:
 
 00000000 <.comment>:
@@ -43,14 +46,14 @@ Disassembly of section .debug_aranges:
    8:	00040000 	andeq	r0, r4, r0
    c:	00000000 	andeq	r0, r0, r0
   10:	00008000 	andeq	r8, r0, r0
-  14:	00000058 	andeq	r0, r0, r8, asr r0
+  14:	00000064 	andeq	r0, r0, r4, rrx
 	...
 Disassembly of section .debug_pubnames:
 
 00000000 <.debug_pubnames>:
    0:	00000019 	andeq	r0, r0, r9, lsl r0
    4:	00000002 	andeq	r0, r0, r2
-   8:	00960000 	addeqs	r0, r6, r0
+   8:	00a20000 	adceq	r0, r2, r0
    c:	00580000 	subeqs	r0, r8, r0
   10:	735f0000 	cmpvc	pc, #0	; 0x0
   14:	74726174 	ldrvcbt	r6, [r2], #-372
@@ -59,11 +62,11 @@ Disassembly of section .debug_pubnames:
 Disassembly of section .debug_info:
 
 00000000 <.debug_info>:
-   0:	00000092 	muleq	r0, r2, r0
+   0:	0000009e 	muleq	r0, lr, r0
    4:	00000002 	andeq	r0, r0, r2
    8:	01040000 	tsteq	r4, r0
    c:	00000000 	andeq	r0, r0, r0
-  10:	00008058 	andeq	r8, r0, r8, asr r0
+  10:	00008064 	andeq	r8, r0, r4, rrx
   14:	00008000 	andeq	r8, r0, r0
   18:	20554e47 	subcss	r4, r5, r7, asr #28
   1c:	2e332043 	cdpcs	0, 3, cr2, cr3, cr3, {2}
@@ -81,22 +84,25 @@ Disassembly of section .debug_info:
   4c:	6174732d 	cmnvs	r4, sp, lsr #6
   50:	6c5f6b63 	mrrcvs	11, 6, r6, pc, cr3
   54:	00706f6f 	rsbeqs	r6, r0, pc, ror #30
-  58:	00008e02 	andeq	r8, r0, r2, lsl #28
+  58:	00009a02 	andeq	r9, r0, r2, lsl #20
   5c:	735f0100 	cmpvc	pc, #0	; 0x0
   60:	74726174 	ldrvcbt	r6, [r2], #-372
-  64:	8e010100 	adfhis	f0, f1, f0
+  64:	9a010100 	bls	4046c <__bss_end__+0x38308>
   68:	00000000 	andeq	r0, r0, r0
-  6c:	58000080 	stmplda	r0, {r7}
+  6c:	64000080 	strvs	r0, [r0], #-128
   70:	01000080 	smlabbeq	r0, r0, r0, r0
   74:	0061035b 	rsbeq	r0, r1, fp, asr r3
-  78:	008e0201 	addeq	r0, lr, r1, lsl #4
+  78:	009a0201 	addeqs	r0, sl, r1, lsl #4
   7c:	91020000 	tstls	r2, r0
   80:	00690370 	rsbeq	r0, r9, r0, ror r3
-  84:	008e0301 	addeq	r0, lr, r1, lsl #6
+  84:	009a0301 	addeqs	r0, sl, r1, lsl #6
   88:	91020000 	tstls	r2, r0
-  8c:	6904006c 	stmvsdb	r4, {r2, r3, r5, r6}
-  90:	0400746e 	streq	r7, [r0], #-1134
-  94:	Address 0x94 is out of bounds.
+  8c:	0062036c 	rsbeq	r0, r2, ip, ror #6
+  90:	009a0401 	addeqs	r0, sl, r1, lsl #8
+  94:	91020000 	tstls	r2, r0
+  98:	69040068 	stmvsdb	r4, {r3, r5, r6}
+  9c:	0400746e 	streq	r7, [r0], #-1134
+  a0:	Address 0xa0 is out of bounds.
 
 Disassembly of section .debug_abbrev:
 
@@ -122,7 +128,7 @@ Disassembly of section .debug_abbrev:
 Disassembly of section .debug_line:
 
 00000000 <.debug_line>:
-   0:	00000032 	andeq	r0, r0, r2, lsr r0
+   0:	00000034 	andeq	r0, r0, r4, lsr r0
    4:	001a0002 	andeqs	r0, sl, r2
    8:	01020000 	tsteq	r2, r0
    c:	000a0efb 	streqd	r0, [sl], -fp
@@ -133,10 +139,9 @@ Disassembly of section .debug_line:
   20:	00000000 	andeq	r0, r0, r0
   24:	00020500 	andeq	r0, r2, r0, lsl #10
   28:	0f000080 	swieq	0x00000080
-  2c:	62b84980 	adcvss	r4, r8, #2097152	; 0x200000
-  30:	00060282 	andeq	r0, r6, r2, lsl #5
-  34:	Address 0x34 is out of bounds.
-
+  2c:	b8484980 	stmltda	r8, {r7, r8, fp, lr}^
+  30:	022c8262 	eoreq	r8, ip, #536870918	; 0x20000006
+  34:	01010006 	tsteq	r1, r6
 Disassembly of section .debug_frame:
 
 00000000 <.debug_frame>:
@@ -147,7 +152,7 @@ Disassembly of section .debug_frame:
   10:	0000001c 	andeq	r0, r0, ip, lsl r0
   14:	00000000 	andeq	r0, r0, r0
   18:	00008000 	andeq	r8, r0, r0
-  1c:	00000058 	andeq	r0, r0, r8, asr r0
+  1c:	00000064 	andeq	r0, r0, r4, rrx
   20:	440c0d44 	strmi	r0, [ip], #-3396
   24:	038d028e 	orreq	r0, sp, #-536870904	; 0xe0000008
   28:	0c44048b 	cfstrdeq	mvd0, [r4], {139}
