@@ -4,17 +4,18 @@
 
 struct hash_struct *translationCache = NULL;
 
+#define X86_CODE_SIZE           0x2000000
+
 void* initX86Code(void *stat){
   //
-  // Allocate space for x86 instructions. In the initial implementation, a
-  // constant 4kByte area is allocated.
+  // Allocate space for x86 instructions.
   // FIXME: Allocate space for x86 code based on an educated guess that
   // maps ARM code size to average x86 code size (include some give)
   //
-  return malloc((size_t)4096 * sizeof(uint8_t));
+  return malloc((size_t)X86_CODE_SIZE * sizeof(uint8_t));
 }
 
-#define ARM_STACK_SIZE          65536
+#define ARM_STACK_SIZE          0x8000000
 void* initArmStack(void *stat){
   uint8_t* armStackPtr;
   armStackPtr = (uint8_t *)malloc((size_t)ARM_STACK_SIZE * sizeof(uint8_t));

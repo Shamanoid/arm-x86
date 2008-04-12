@@ -42,4 +42,4 @@ exec:	 	$(OBJ)
 		$(OBJDUMP) -dD ./arm$(FLAV) > ArmX86$(FLAV).dis
 
 clean:
-		rm -rf *.o *.map arm arm_debug arm_debug_noindex arm_noindex *.dis
+		rm -rf *.o *.map *.dis arm*

@@ -94,6 +94,7 @@ void callEndBBTaken(){
   // FIXME: How should a program end?
   */
   if(nextBB == NULL){
+    printf("%d\n",regFile[0]);
     exit(0);
   }
   DP1("Next BB Address = %p\n",nextBB);
@@ -184,7 +185,7 @@ uint8_t handleConditional(void *pInst){
   ADD_BYTE(X86_OP_POPF);
   LOG_INSTR(instInfo.pX86Addr,count);
 
-  printf("cond = %d\n",instInfo.cond);
+  DP1("cond = %d\n",instInfo.cond);
   switch(instInfo.cond){
     case COND_EQ:
       /* jne */
@@ -540,8 +541,8 @@ void decodeBasicBlock(){
   float sEq1Percent = ((100.0 * sEq1Count)/(sEq1Count + sEq0Count));
   float sEq0Percent = ((100.0 * sEq0Count)/(sEq1Count + sEq0Count));
 
-  printf("%.2f percent instructions modify flags\n",sEq1Percent);
-  printf("%.2f percent instructions don't modify flags\n",sEq0Percent);
+  DP1("%.2f percent instructions modify flags\n",sEq1Percent);
+  DP1("%.2f percent instructions don't modify flags\n",sEq0Percent);
 #endif /* DEBUG */
 
   DP_BYE;
@@ -701,10 +702,12 @@ int lsmHandler(void *pInst){
         ADD_WORD((uintptr_t)&nextBB);
 
 #ifndef NOCHAINING
+        /*
+        // Load from register cannot be chained.
+        */
         ADD_BYTE(X86_OP_MOV_IMM_TO_MEM32);
         ADD_BYTE(0x05); /* MOD R/M for mov imm32 to rm32 0xC7 /0 */
         ADD_WORD((uintptr_t)&pTakenCalloutSourceLoc);
-        /* ADD_WORD((uintptr_t)(instInfo.pX86Addr + count + 4)); */
         ADD_WORD(0x00000000);
 #endif /* NOCHAINING */
 
@@ -746,8 +749,7 @@ int lsimmHandler(void *pInst){
   DP_ASSERT(LSIMM_INFO.W != 1, "Pre-Indexed addressing not supported\n");
 
   if(LSIMM_INFO.L == 1){
-    DP("Load ");
-    printf("Rd = %d, Rn = %d\n",LSIMM_INFO.Rd, LSIMM_INFO.Rn);
+    DP2("Load: Rd = %d, Rn = %d\n",LSIMM_INFO.Rd, LSIMM_INFO.Rn);
 
     ADD_BYTE(X86_OP_MOV_TO_REG);
     ADD_BYTE(0x15) /* MODR/M - Mov from disp32 to edx */
@@ -791,8 +793,7 @@ int lsimmHandler(void *pInst){
       LOG_INSTR(instInfo.pX86Addr,count);
     };
   }else{
-    DP("Store ");
-    printf("Rd = %d, Rn = %d\n",LSIMM_INFO.Rd, LSIMM_INFO.Rn);
+    DP2("Store: Rd = %d, Rn = %d\n",LSIMM_INFO.Rd, LSIMM_INFO.Rn);
 
     ADD_BYTE(X86_OP_MOV_TO_REG);
     ADD_BYTE(0x15) /* MODR/M - Mov from disp32 to edx */
@@ -912,8 +913,7 @@ subHandler(void *pInst){
   }
 
   if(instInfo.immediate == FALSE){
-    DP("Register ");
-    printf("\tRN = %d\nRD = %d\n",DPREG_INFO.Rn, DPREG_INFO.Rd);
+    DP2("Register: RN = %d\nRD = %d\n",DPREG_INFO.Rn, DPREG_INFO.Rd);
 
     ADD_BYTE(X86_OP_MOV_TO_EAX);
     ADD_WORD((uintptr_t)&regFile[DPREG_INFO.Rn]);
@@ -930,8 +930,7 @@ subHandler(void *pInst){
       UNSUPPORTED;
     }
   }else{
-    DP("Immediate ");
-    printf("RN = %d, RD = %d\n",DPIMM_INFO.Rn, DPIMM_INFO.Rd);
+    DP2("Immediate: RN = %d, RD = %d\n",DPIMM_INFO.Rn, DPIMM_INFO.Rd);
 
     ADD_BYTE(X86_OP_MOV_TO_EAX);
     ADD_WORD((uintptr_t)&regFile[DPIMM_INFO.Rn]);
@@ -973,8 +972,7 @@ rsbHandler(void *pInst){
   }
 
   if(instInfo.immediate == FALSE){
-    DP("Register ");
-    printf("\tRN = %d\nRD = %d\n",DPREG_INFO.Rn, DPREG_INFO.Rd);
+    DP2("Register: RN = %d\nRD = %d\n",DPREG_INFO.Rn, DPREG_INFO.Rd);
 
     ADD_BYTE(X86_OP_MOV_TO_EAX);
     ADD_WORD((uintptr_t)&regFile[DPREG_INFO.Rm]);
@@ -991,8 +989,7 @@ rsbHandler(void *pInst){
       UNSUPPORTED;
     }
   }else{
-    DP("Immediate ");
-    printf("RN = %d, RD = %d\n",DPIMM_INFO.Rn, DPIMM_INFO.Rd);
+    DP2("Immediate: RN = %d, RD = %d\n",DPIMM_INFO.Rn, DPIMM_INFO.Rd);
 
     DP_ASSERT(0,"Immediate Reverse subtraction not supported\n");
 
@@ -1027,8 +1024,7 @@ addHandler(void *pInst){
   }
 
   if(instInfo.immediate == FALSE){
-    DP("Register ");
-    printf("\tRN = %d\nRD = %d\n",DPREG_INFO.Rn, DPREG_INFO.Rd);
+    DP2("Register: RN = %d\nRD = %d\n",DPREG_INFO.Rn, DPREG_INFO.Rd);
 
     ADD_BYTE(X86_OP_MOV_TO_EAX);
     ADD_WORD((uintptr_t)&regFile[DPREG_INFO.Rn]);
@@ -1045,8 +1041,7 @@ addHandler(void *pInst){
       UNSUPPORTED;
     }
   }else{
-    DP("Immediate ");
-    printf("RN = %d, RD = %d\n",DPIMM_INFO.Rn, DPIMM_INFO.Rd);
+    DP2("Immediate: RN = %d, RD = %d\n",DPIMM_INFO.Rn, DPIMM_INFO.Rd);
 
     ADD_BYTE(X86_OP_MOV_TO_EAX);
     ADD_WORD((uintptr_t)&regFile[DPIMM_INFO.Rn]);
@@ -1163,8 +1158,7 @@ cmpHandler(void *pInst){
   }
 
   if(instInfo.immediate == FALSE){
-    DP("Register ");
-    printf("Rn = %d, Rm = %d\n",DPREG_INFO.Rn, DPREG_INFO.Rm);
+    DP2("Register: Rn = %d, Rm = %d\n",DPREG_INFO.Rn, DPREG_INFO.Rm);
 
     ADD_BYTE(X86_OP_MOV_TO_EAX);
     ADD_WORD((uintptr_t)&regFile[DPREG_INFO.Rm]);
@@ -1178,8 +1172,7 @@ cmpHandler(void *pInst){
       UNSUPPORTED;
     }
   }else{
-    DP("Immediate ");
-    printf("Rn = %d, Rm = %d\n",DPREG_INFO.Rn, DPREG_INFO.Rm);
+    DP2("Immediate: Rn = %d, Rm = %d\n",DPREG_INFO.Rn, DPREG_INFO.Rm);
 
     ADD_BYTE(X86_OP_MOV_TO_EAX);
     ADD_WORD((uintptr_t)&regFile[DPIMM_INFO.Rn]);
@@ -1241,9 +1234,7 @@ movHandler(void *pInst){
   struct decodeInfo_t instInfo = *(struct decodeInfo_t*)pInst;
 
   if(instInfo.immediate == FALSE){
-    DP("Register ");
-
-    printf("Rm = %d, Rd = %d\n",DPREG_INFO.Rm, DPREG_INFO.Rd);
+    DP2("Register: Rm = %d, Rd = %d\n",DPREG_INFO.Rm, DPREG_INFO.Rd);
 
     ADD_BYTE(X86_OP_MOV_TO_EAX);
     ADD_WORD((uintptr_t)&regFile[DPREG_INFO.Rm]);
@@ -1256,9 +1247,7 @@ movHandler(void *pInst){
       UNSUPPORTED;
     }
   }else{
-    DP("Immediate\n");
-
-    printf("Rd = %d\n", DPIMM_INFO.Rd);
+    DP1("Immediate: Rd = %d\n", DPIMM_INFO.Rd);
 
     ADD_BYTE(X86_OP_MOV_IMM_TO_EAX);
     ADD_WORD((uint32_t)DPIMM_INFO.imm);
@@ -1281,11 +1270,10 @@ bicHandler(void *pInst){
   uint8_t count = 0;
 
   if(instInfo.immediate == FALSE){
-    DP("\tRegister ");
+    DP("Register bic\n");
   }else{
-    DP("\tImmediate ");
+    DP("Immediate bic\n");
   }
-  printf("bic\n");
 
   DP_ASSERT(0,"Bic not supported\n");
   return count;
@@ -1297,11 +1285,10 @@ mvnHandler(void *pInst){
   uint8_t count = 0;
 
   if(instInfo.immediate == FALSE){
-    DP("\tRegister ");
+    DP("Register mvn\n");
   }else{
-    DP("\tImmediate ");
+    DP("Immediate mvn\n");
   }
-  printf("mvn\n");
 
   DP_ASSERT(0,"Mvn not supported\n");
   return count;
