@@ -6,6 +6,10 @@ ifneq (,$(findstring _noindex,$(FLAV)))
 CFLAGS += -DNOINDEX
 endif
 
+ifneq (,$(findstring _nochain,$(FLAV)))
+CFLAGS += -DNOCHAINING
+endif
+
 CC = gcc
 CFLAGS += -Wall -O4
 LOPTS = -Wl,-Ttext -Wl,90000000 -Wl,-Tbss -Wl,A0000000 -Wl,-Tdata -Wl,B0000000 -Wl,-Map -Wl,arm$(FLAV).map

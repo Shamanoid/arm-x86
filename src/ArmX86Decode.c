@@ -15,6 +15,19 @@ int32_t regFile[NUM_ARM_REGISTERS] = {
 
 uint32_t cpsr;     /* ARM Program Status Register for user mode */
 uint32_t x86Flags; /* x86 Flag Register */
+void *nextBB;
+
+#ifndef NOCHAINING
+/*
+// These are a couple of variable used for chaining. When, at the end of a
+// basic block the taken or untaken callout is invoked, one of these variables
+// is populated at the call location to indicate to the handler where the call
+// has come from. This allows the handler to patch the call location to chain
+// the next basic block to it.
+*/
+void* pTakenCalloutSourceLoc;
+void* pUntakenCalloutSourceLoc;
+#endif /* NOCHAINING */
 
 typedef OPCODE_HANDLER_RETURN (*opcodeHandler_t)(void *inst);
 opcodeHandler_t opcodeHandler[NUM_OPCODES] = {
@@ -73,10 +86,8 @@ typedef void (*translator)(void);
 uint32_t *pArmPC;
 uint8_t *pX86PC;
 
-void callEndBBTaken(void *nextBB){
+void callEndBBTaken(){
   DP_HI;
-
-  DP1("Next BB Address = %p\n",nextBB);
 
   DISPLAY_REGS;
   /*
@@ -85,6 +96,32 @@ void callEndBBTaken(void *nextBB){
   if(nextBB == NULL){
     exit(0);
   }
+  DP1("Next BB Address = %p\n",nextBB);
+
+#ifndef NOCHAINING
+  DP1("I am %p\n",&callEndBBTaken);
+  DP1("Got here from address %p\n",pTakenCalloutSourceLoc);
+  DP1("Offset from call location = 0x%x\n",
+    (intptr_t)&callEndBBTaken - (intptr_t)pTakenCalloutSourceLoc);
+
+  if(pTakenCalloutSourceLoc != 0x00000000){
+    uint8_t *nextX86BB;
+    DP2("Caller Dump: 0x%x 0x%x\n",
+      *(uint8_t *)pTakenCalloutSourceLoc,
+      *(uint32_t *)((uint8_t *)pTakenCalloutSourceLoc + 1)
+    );
+
+    if((nextX86BB = (uint8_t *)INDEXED_BLOCK((void *)nextBB)) == NULL){
+      nextX86BB = pX86PC;
+    }
+    DP1("Chaining BB to %p\n",nextX86BB);
+    *(uint8_t *)pTakenCalloutSourceLoc = X86_OP_JMP;
+    *(uint32_t *)((uint8_t *)pTakenCalloutSourceLoc + 1) = 
+      (uintptr_t)nextX86BB - 
+        ((uintptr_t)((uint8_t *)pTakenCalloutSourceLoc + 5)
+      );
+  }
+#endif /* NOCHAINING */
 
   pArmPC = nextBB;
   decodeBasicBlock();
@@ -92,10 +129,30 @@ void callEndBBTaken(void *nextBB){
   DP_BYE;
 }
 
-void callEndBBNotTaken(void *nextBB){
+void callEndBBNotTaken(){
   DP_HI;
 
+#ifndef NOCHAINING
+  DP1("I am %p\n",&callEndBBNotTaken);
+  DP1("Got here from address %p\n",pUntakenCalloutSourceLoc);
+  DP1("Offset from call location = 0x%x\n",
+    (intptr_t)&callEndBBNotTaken - (intptr_t)pUntakenCalloutSourceLoc);
+  DP2("Caller Dump: 0x%x 0x%x\n",
+    *(uint8_t *)pUntakenCalloutSourceLoc,
+    *(uint32_t *)((uint8_t *)pUntakenCalloutSourceLoc + 1)
+  );
   DP1("Next BB Address = %p\n",nextBB);
+
+  uint8_t *nextX86BB;
+  if((nextX86BB = (uint8_t *)INDEXED_BLOCK((void *)nextBB)) == NULL){
+    nextX86BB = pX86PC;
+  }
+  DP1("Chaining BB to %p\n",nextX86BB);
+  *(uint8_t *)pUntakenCalloutSourceLoc = X86_OP_JMP;
+  *(uint32_t *)((uint8_t*)pUntakenCalloutSourceLoc + 1) = (uintptr_t)nextX86BB
+    - ((uintptr_t)((uint8_t *)pUntakenCalloutSourceLoc + 5));
+#endif /* NOCHAINING */
+
   DISPLAY_REGS;
   pArmPC = nextBB;
   decodeBasicBlock();
@@ -390,9 +447,21 @@ void decodeBasicBlock(){
           */
           if(instInfo.endBB == TRUE){
             count = 0;
+
             ADD_BYTE(X86_OP_PUSH_MEM32);
             ADD_BYTE(0x35); /* MOD R/M for PUSH - 0xFF /6 */
             ADD_WORD((uintptr_t)&regFile[15]);
+            ADD_BYTE(X86_OP_POP_MEM32);
+            ADD_BYTE(0x05); /* MOD R/M for POP - 0x8F /0 */
+            ADD_WORD((uintptr_t)&nextBB);
+
+#ifndef NOCHAINING
+            ADD_BYTE(X86_OP_MOV_IMM_TO_MEM32);
+            ADD_BYTE(0x05); /* MOD R/M for mov imm32 to rm32 0xC7 /0 */
+            ADD_WORD((uintptr_t)&pTakenCalloutSourceLoc);
+            ADD_WORD((uintptr_t)(pX86PC + count + 4));
+#endif /* NOCHAINING */
+
             pX86PC += count;
 
             ADD_BYTE(X86_OP_CALL);
@@ -423,8 +492,17 @@ void decodeBasicBlock(){
           */
           if(instInfo.cond != AL){
             count = 0;
-            ADD_BYTE(X86_OP_PUSH_IMM32);
+            ADD_BYTE(X86_OP_MOV_IMM_TO_MEM32);
+            ADD_BYTE(0x05); /* MOD R/M for mov imm32 to rm32 0xC7 /0 */
+            ADD_WORD((uintptr_t)&nextBB);
             ADD_WORD((uint32_t)((uintptr_t)pArmPC + 4));
+
+#ifndef NOCHAINING
+            ADD_BYTE(X86_OP_MOV_IMM_TO_MEM32);
+            ADD_BYTE(0x05); /* MOD R/M for mov imm32 to rm32 0xC7 /0 */
+            ADD_WORD((uintptr_t)&pUntakenCalloutSourceLoc);
+            ADD_WORD((uintptr_t)(pX86PC + count + 4));
+#endif /* NOCHAINING */
 
             ADD_BYTE(X86_OP_CALL);
             ADD_WORD((uintptr_t)(
@@ -618,6 +696,17 @@ int lsmHandler(void *pInst){
         ADD_BYTE(X86_OP_PUSH_MEM32);
         ADD_BYTE(0x35); /* MOD R/M for PUSH - 0xFF /6 */
         ADD_WORD((uintptr_t)&PC);
+        ADD_BYTE(X86_OP_POP_MEM32);
+        ADD_BYTE(0x05); /* MOD R/M for POP - 0x8F /0 */
+        ADD_WORD((uintptr_t)&nextBB);
+
+#ifndef NOCHAINING
+        ADD_BYTE(X86_OP_MOV_IMM_TO_MEM32);
+        ADD_BYTE(0x05); /* MOD R/M for mov imm32 to rm32 0xC7 /0 */
+        ADD_WORD((uintptr_t)&pTakenCalloutSourceLoc);
+        /* ADD_WORD((uintptr_t)(instInfo.pX86Addr + count + 4)); */
+        ADD_WORD(0x00000000);
+#endif /* NOCHAINING */
 
         ADD_BYTE(X86_OP_CALL);
         ADD_WORD((uintptr_t)(
@@ -678,9 +767,22 @@ int lsimmHandler(void *pInst){
     if(LSIMM_INFO.Rd == 15){
       ((struct decodeInfo_t *)pInst)->endBB = TRUE;
 
+      /*
+      // FIXME: This can be optimized.
+      */
       ADD_BYTE(X86_OP_PUSH_MEM32);
       ADD_BYTE(0x35); /* MOD R/M for PUSH - 0xFF /6 */
       ADD_WORD((uintptr_t)&PC);
+      ADD_BYTE(X86_OP_POP_MEM32);
+      ADD_BYTE(0x05); /* MOD R/M for POP - 0x8F /0 */
+      ADD_WORD((uintptr_t)&nextBB);
+
+#ifndef NOCHAINING
+      ADD_BYTE(X86_OP_MOV_IMM_TO_MEM32);
+      ADD_BYTE(0x05); /* MOD R/M for mov imm32 to rm32 0xC7 /0 */
+      ADD_WORD((uintptr_t)&pTakenCalloutSourceLoc);
+      ADD_WORD((uintptr_t)(instInfo.pX86Addr + count + 4));
+#endif /* NOCHAINING */
 
       ADD_BYTE(X86_OP_CALL);
       ADD_WORD((uintptr_t)(
@@ -743,8 +845,17 @@ int brchHandler(void *pInst){
 
   DP1("Branch Address = 0x%x\n",branchOffset);
 
-  ADD_BYTE(X86_OP_PUSH_IMM32);
+  ADD_BYTE(X86_OP_MOV_IMM_TO_MEM32);
+  ADD_BYTE(0x05); /* MOD R/M for mov imm32 to rm32 0xC7 /0 */
+  ADD_WORD((uintptr_t)&nextBB);
   ADD_WORD(branchOffset);
+
+#ifndef NOCHAINING
+  ADD_BYTE(X86_OP_MOV_IMM_TO_MEM32);
+  ADD_BYTE(0x05); /* MOD R/M for mov imm32 to rm32 0xC7 /0 */
+  ADD_WORD((uintptr_t)&pTakenCalloutSourceLoc);
+  ADD_WORD((uintptr_t)(instInfo.pX86Addr + count + 4));
+#endif /* NOCHAINING */
 
   ADD_BYTE(X86_OP_CALL);
   ADD_WORD((uintptr_t)(
