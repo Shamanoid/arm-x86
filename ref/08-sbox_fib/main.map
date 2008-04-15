@@ -1,0 +1,259 @@
+
+Memory Configuration
+
+Name             Origin             Length             Attributes
+*default*        0x00000000         0xffffffff
+
+Linker script and memory map
+
+LOAD /tmp/ccKuQJiB.o
+                0x00008000                PROVIDE (__executable_start, 0x8000)
+                0x00008074                . = (0x8000 + SIZEOF_HEADERS)
+
+.interp
+ *(.interp)
+
+.hash
+ *(.hash)
+
+.dynsym
+ *(.dynsym)
+
+.dynstr
+ *(.dynstr)
+
+.gnu.version
+ *(.gnu.version)
+
+.gnu.version_d
+ *(.gnu.version_d)
+
+.gnu.version_r
+ *(.gnu.version_r)
+
+.rel.dyn
+ *(.rel.init)
+ *(.rel.text .rel.text.* .rel.gnu.linkonce.t.*)
+ *(.rel.fini)
+ *(.rel.rodata .rel.rodata.* .rel.gnu.linkonce.r.*)
+ *(.rel.data .rel.data.* .rel.gnu.linkonce.d.*)
+ *(.rel.tdata .rel.tdata.* .rel.gnu.linkonce.td.*)
+ *(.rel.tbss .rel.tbss.* .rel.gnu.linkonce.tb.*)
+ *(.rel.ctors)
+ *(.rel.dtors)
+ *(.rel.got)
+ *(.rel.bss .rel.bss.* .rel.gnu.linkonce.b.*)
+
+.rela.dyn
+ *(.rela.init)
+ *(.rela.text .rela.text.* .rela.gnu.linkonce.t.*)
+ *(.rela.fini)
+ *(.rela.rodata .rela.rodata.* .rela.gnu.linkonce.r.*)
+ *(.rela.data .rela.data.* .rela.gnu.linkonce.d.*)
+ *(.rela.tdata .rela.tdata.* .rela.gnu.linkonce.td.*)
+ *(.rela.tbss .rela.tbss.* .rela.gnu.linkonce.tb.*)
+ *(.rela.ctors)
+ *(.rela.dtors)
+ *(.rela.got)
+ *(.rela.bss .rela.bss.* .rela.gnu.linkonce.b.*)
+
+.rel.plt
+ *(.rel.plt)
+
+.rela.plt
+ *(.rela.plt)
+
+.init
+ *(.init)
+
+.plt
+ *(.plt)
+
+.text           0x00008074       0xac
+ *(.text .stub .text.* .gnu.linkonce.t.*)
+ .text          0x00008074       0xac /tmp/ccKuQJiB.o
+                0x00008074                _start
+                0x00008094                fib
+ *(.gnu.warning)
+ *(.glue_7t)
+ *(.glue_7)
+
+.fini
+ *(.fini)
+                0x00008120                PROVIDE (__etext, .)
+                0x00008120                PROVIDE (_etext, .)
+                0x00008120                PROVIDE (etext, .)
+
+.rodata
+ *(.rodata .rodata.* .gnu.linkonce.r.*)
+
+.rodata1
+ *(.rodata1)
+
+.note.gnu.arm.ident
+ *(.note.gnu.arm.ident)
+
+.eh_frame_hdr
+ *(.eh_frame_hdr)
+                0x00010120                . = (ALIGN (0x8000) + (. & 0x7fff))
+                0x00010120                . = ALIGN (0x4)
+                0x00010120                PROVIDE (__preinit_array_start, .)
+
+.preinit_array
+ *(.preinit_array)
+                0x00010120                PROVIDE (__preinit_array_end, .)
+                0x00010120                PROVIDE (__init_array_start, .)
+
+.init_array
+ *(.init_array)
+                0x00010120                PROVIDE (__init_array_end, .)
+                0x00010120                PROVIDE (__fini_array_start, .)
+
+.fini_array
+ *(.fini_array)
+                0x00010120                PROVIDE (__fini_array_end, .)
+
+.data           0x00010120        0x0
+                0x00010120                __data_start = .
+ *(.data .data.* .gnu.linkonce.d.*)
+
+.data1
+ *(.data1)
+
+.tdata
+ *(.tdata .tdata.* .gnu.linkonce.td.*)
+
+.tbss
+ *(.tbss .tbss.* .gnu.linkonce.tb.*)
+ *(.tcommon)
+
+.eh_frame
+ *(.eh_frame)
+
+.gcc_except_table
+ *(.gcc_except_table)
+
+.dynamic
+ *(.dynamic)
+
+.ctors
+ *crtbegin*.o(.ctors)
+ *(EXCLUDE_FILE(*crtend*.o) .ctors)
+ *(SORT(.ctors.*))
+ *(.ctors)
+
+.dtors
+ *crtbegin*.o(.dtors)
+ *(EXCLUDE_FILE(*crtend*.o) .dtors)
+ *(SORT(.dtors.*))
+ *(.dtors)
+
+.jcr
+ *(.jcr)
+
+.got
+ *(.got.plt)
+ *(.got)
+                0x00010120                _edata = .
+                0x00010120                PROVIDE (edata, .)
+                0x00010120                __bss_start = .
+                0x00010120                __bss_start__ = .
+
+.bss            0x00010120        0x0
+ *(.dynbss)
+ *(.bss .bss.* .gnu.linkonce.b.*)
+ *(COMMON)
+                0x00010120                . = ALIGN (0x4)
+                0x00010120                . = ALIGN (0x4)
+                0x00010120                _end = .
+                0x00010120                _bss_end__ = .
+                0x00010120                __bss_end__ = .
+                0x00010120                __end__ = .
+                0x00010120                PROVIDE (end, .)
+
+.stab
+ *(.stab)
+
+.stabstr
+ *(.stabstr)
+
+.stab.excl
+ *(.stab.excl)
+
+.stab.exclstr
+ *(.stab.exclstr)
+
+.stab.index
+ *(.stab.index)
+
+.stab.indexstr
+ *(.stab.indexstr)
+
+.comment        0x00000000       0x1b
+ *(.comment)
+ .comment       0x00000000       0x1b /tmp/ccKuQJiB.o
+
+.debug
+ *(.debug)
+
+.line
+ *(.line)
+
+.debug_srcinfo
+ *(.debug_srcinfo)
+
+.debug_sfnames
+ *(.debug_sfnames)
+
+.debug_aranges  0x00000000       0x20
+ *(.debug_aranges)
+ .debug_aranges
+                0x00000000       0x20 /tmp/ccKuQJiB.o
+
+.debug_pubnames
+                0x00000000       0x25
+ *(.debug_pubnames)
+ .debug_pubnames
+                0x00000000       0x25 /tmp/ccKuQJiB.o
+
+.debug_info     0x00000000     0x11c5
+ *(.debug_info .gnu.linkonce.wi.*)
+ .debug_info    0x00000000     0x11c5 /tmp/ccKuQJiB.o
+
+.debug_abbrev   0x00000000      0x184
+ *(.debug_abbrev)
+ .debug_abbrev  0x00000000      0x184 /tmp/ccKuQJiB.o
+
+.debug_line     0x00000000      0x1a9
+ *(.debug_line)
+ .debug_line    0x00000000      0x1a9 /tmp/ccKuQJiB.o
+
+.debug_frame    0x00000000       0x50
+ *(.debug_frame)
+ .debug_frame   0x00000000       0x50 /tmp/ccKuQJiB.o
+
+.debug_str      0x00000000       0x25
+ *(.debug_str)
+ .debug_str     0x00000000       0x25 /tmp/ccKuQJiB.o
+
+.debug_loc
+ *(.debug_loc)
+
+.debug_macinfo
+ *(.debug_macinfo)
+
+.debug_weaknames
+ *(.debug_weaknames)
+
+.debug_funcnames
+ *(.debug_funcnames)
+
+.debug_typenames
+ *(.debug_typenames)
+
+.debug_varnames
+ *(.debug_varnames)
+
+/DISCARD/
+ *(.note.GNU-stack)
+OUTPUT(main elf32-littlearm)
