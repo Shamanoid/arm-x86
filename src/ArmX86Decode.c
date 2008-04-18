@@ -48,6 +48,7 @@ typedef void (*translator)(void);
 
 #ifdef DEBUG
 
+#if 0
 #define LOG_INSTR(addr,count) { \
   int i;                        \
   printf("%p: ",addr);          \
@@ -55,7 +56,10 @@ typedef void (*translator)(void);
     printf(" %x",*((addr)+i));  \
   }                             \
   printf("\n");                 \
-}                               \
+}
+#else
+#define LOG_INSTR(addr,count)   
+#endif
 
 #define DISPLAY_REGS {                           \
   int i;                                         \
@@ -750,6 +754,27 @@ int lsimmHandler(void *pInst){
 
   if(LSIMM_INFO.L == 1){
     DP2("Load: Rd = %d, Rn = %d\n",LSIMM_INFO.Rd, LSIMM_INFO.Rn);
+
+    /*
+    // This is an important point. If Rn is the PC, the addressing is PC
+    // relative. The PC should be updated to where the ARM PC is at the
+    // moment. If the code were running on ARM hardware, R15 would be updated
+    // by hardware with each instruction. We need to update it manually here.
+    // Instead of doing the update every instruction, update only when PC is
+    // used.
+    */
+    if(LSIMM_INFO.Rn == 15){
+      DP1("PC Relative Instruction. Updating PC to 0x%x\n",
+        (uint32_t)((uint8_t *)pArmPC + 8)
+      );
+
+      ADD_BYTE(X86_OP_MOV_IMM_TO_EAX);
+      ADD_WORD((uint32_t)((uint8_t *)pArmPC + 8));
+
+      ADD_BYTE(X86_OP_MOV_FROM_EAX);
+      ADD_WORD((uintptr_t)&regFile[15]);
+      LOG_INSTR(instInfo.pX86Addr,count);
+    }
 
     ADD_BYTE(X86_OP_MOV_TO_REG);
     ADD_BYTE(0x15) /* MODR/M - Mov from disp32 to edx */
