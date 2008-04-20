@@ -71,6 +71,7 @@ typedef void (*translator)(void);
     printf("R[%2d] = 0x%08X ",i, regFile[i]);    \
   }                                              \
   printf("\n");                                  \
+  printf("Flags = 0x%x\n",x86Flags);             \
   printf("=========\n");                         \
 }                                                \
 
@@ -239,7 +240,7 @@ uint8_t handleConditional(void *pInst){
 
 #ifdef DEBUG
 /*
-// Include a couple of profiling variable. These are not really
+// Include a couple of profiling variables. These are not really
 // indicative because a static count of instructions that modify
 // flags is not as important as the run-count for instructions
 // that do. But keep them around anyway.
@@ -299,7 +300,7 @@ void decodeBasicBlock(){
     x86Translator = (translator)pX86PC;
 
     while(instInfo.endBB == FALSE){
-      DP1("Processing instruction: 0x%x\n",*pArmPC);
+      DP2("Processing instruction: 0x%x @ %p\n",*pArmPC, (void *)pArmPC);
 
       count = 0;
       armInst = *pArmPC;
@@ -372,6 +373,35 @@ void decodeBasicBlock(){
           }else{
             UNSUPPORTED;
           }
+          instInfo.pX86Addr = pX86PC;
+
+          /*
+          // The mov instruction may have set the PC to a new value. Handle this
+          // as the end of a basic block.
+          */
+          if(instInfo.endBB == TRUE){
+            if(instInfo.cond != AL){
+              count = 0;
+              ADD_BYTE(X86_OP_MOV_IMM_TO_MEM32);
+              ADD_BYTE(0x05); /* MOD R/M for mov imm32 to rm32 0xC7 /0 */
+              ADD_WORD((uintptr_t)&nextBB);
+              ADD_WORD((uint32_t)((uintptr_t)pArmPC + 4));
+
+#ifndef NOCHAINING
+              ADD_BYTE(X86_OP_MOV_IMM_TO_MEM32);
+              ADD_BYTE(0x05); /* MOD R/M for mov imm32 to rm32 0xC7 /0 */
+              ADD_WORD((uintptr_t)&pUntakenCalloutSourceLoc);
+              ADD_WORD((uintptr_t)(pX86PC + count + 4));
+#endif /* NOCHAINING */
+
+              ADD_BYTE(X86_OP_CALL);
+              ADD_WORD((uintptr_t)(
+                (intptr_t)&callEndBBNotTaken - (intptr_t)(pX86PC + count + 4)
+              ));
+              pX86PC += count;
+            }
+          }
+          instInfo.pX86Addr = pX86PC;
         break;
         case INST_TYPE_IMM_UNDEF:
           if((armInst & 0x01900000) != 0x01000000){
@@ -816,7 +846,7 @@ int lsimmHandler(void *pInst){
         (intptr_t)&callEndBBTaken - (intptr_t)(instInfo.pX86Addr + count + 4)
       ));
       LOG_INSTR(instInfo.pX86Addr,count);
-    };
+    }
   }else{
     DP2("Store: Rd = %d, Rn = %d\n",LSIMM_INFO.Rd, LSIMM_INFO.Rn);
 
@@ -930,6 +960,8 @@ subHandler(void *pInst){
   uint8_t count = 0;
 
   if(DPREG_INFO.S == TRUE){
+    DP("Updating flags\n");
+
     ADD_BYTE(X86_OP_PUSH_MEM32);
     ADD_BYTE(0x35); /* MOD R/M for PUSH - 0xFF /6 */
     ADD_WORD((uintptr_t)&x86Flags);
@@ -989,6 +1021,8 @@ rsbHandler(void *pInst){
   uint8_t count = 0;
 
   if(DPREG_INFO.S == TRUE){
+    DP("Updating flags\n");
+
     ADD_BYTE(X86_OP_PUSH_MEM32);
     ADD_BYTE(0x35); /* MOD R/M for PUSH - 0xFF /6 */
     ADD_WORD((uintptr_t)&x86Flags);
@@ -1040,6 +1074,8 @@ addHandler(void *pInst){
   uint8_t count = 0;
 
   if(DPREG_INFO.S == TRUE){
+    DP("Updating flags\n");
+
     ADD_BYTE(X86_OP_PUSH_MEM32);
     ADD_BYTE(0x35); /* MOD R/M for PUSH - 0xFF /6 */
     ADD_WORD((uintptr_t)&x86Flags);
@@ -1175,6 +1211,8 @@ cmpHandler(void *pInst){
   uint8_t count = 0;
 
   if(DPREG_INFO.S == TRUE){
+    DP("Updating flags\n");
+
     ADD_BYTE(X86_OP_PUSH_MEM32);
     ADD_BYTE(0x35); /* MOD R/M for PUSH - 0xFF /6 */
     ADD_WORD((uintptr_t)&x86Flags);
@@ -1228,13 +1266,55 @@ cmnHandler(void *pInst){
   struct decodeInfo_t instInfo = *(struct decodeInfo_t*)pInst;
   uint8_t count = 0;
 
-  if(instInfo.immediate == FALSE){
-    DP("\tRegister ");
-  }else{
-    DP("\tImmediate ");
+  if(DPREG_INFO.S == TRUE){
+    DP("Updating flags\n");
+
+    ADD_BYTE(X86_OP_PUSH_MEM32);
+    ADD_BYTE(0x35); /* MOD R/M for PUSH - 0xFF /6 */
+    ADD_WORD((uintptr_t)&x86Flags);
+    ADD_BYTE(X86_OP_POPF);
+    LOG_INSTR(instInfo.pX86Addr,count);
   }
 
-  DP_ASSERT(0,"Cmn not supported\n");
+  if(instInfo.immediate == FALSE){
+    DP2("Register: Rn = %d, Rm = %d\n",DPREG_INFO.Rn, DPREG_INFO.Rm);
+
+    ADD_BYTE(X86_OP_MOV_TO_EAX);
+    ADD_WORD((uintptr_t)&regFile[DPREG_INFO.Rn]);
+
+    ADD_BYTE(X86_OP_ADD_MEM32_TO_EAX);
+    ADD_BYTE(0x05); /* MODR/M */
+    ADD_WORD((uintptr_t)&regFile[DPREG_INFO.Rm]);
+    LOG_INSTR(instInfo.pX86Addr,count);
+
+    if(DPREG_INFO.shiftAmt != 0){ 
+      UNSUPPORTED;
+    }
+  }else{
+    DP2("Immediate: Rn = %d, Rm = %d\n",DPREG_INFO.Rn, DPREG_INFO.Rm);
+
+    ADD_BYTE(X86_OP_MOV_TO_EAX);
+    ADD_WORD((uintptr_t)&regFile[DPIMM_INFO.Rn]);
+
+    ADD_BYTE(X86_OP_CMP32_WITH_EAX);
+    ADD_WORD((uint32_t)DPIMM_INFO.imm * -1);
+    DP1("Comparing with 0x%x\n",((uint32_t)DPIMM_INFO.imm * -1));
+
+    LOG_INSTR(instInfo.pX86Addr,count);
+
+    if(DPIMM_INFO.rotate != 0){ 
+      UNSUPPORTED;
+    }
+  }
+
+  if(DPREG_INFO.S == TRUE){
+    ADD_BYTE(X86_OP_PUSHF);
+    ADD_BYTE(X86_OP_POP_MEM32);
+    ADD_BYTE(0x05); /* MOD R/M for PUSH - 0xFF /6 */
+    ADD_WORD((uintptr_t)&x86Flags);
+    LOG_INSTR(instInfo.pX86Addr,count);
+  }
+
   return count;
 }
 
@@ -1267,6 +1347,43 @@ movHandler(void *pInst){
     ADD_BYTE(X86_OP_MOV_FROM_EAX);
     ADD_WORD((uintptr_t)&regFile[DPREG_INFO.Rd]);
     LOG_INSTR(instInfo.pX86Addr,count);
+
+    /*
+    // If the destination is the PC, this may be the end of a basic block.
+    // In case this is a conditional instruction and the condition fails,
+    // execution should continue at the next instruction. Therefore, the
+    // conditional mov can essentially be treated as a branch, where there is
+    // a taken case and a not-taken case.
+    */
+    if(DPREG_INFO.Rd == 15){
+      ((struct decodeInfo_t *)pInst)->endBB = TRUE;
+
+      /*
+      // FIXME: This can be optimized.
+      */
+      ADD_BYTE(X86_OP_PUSH_MEM32);
+      ADD_BYTE(0x35); /* MOD R/M for PUSH - 0xFF /6 */
+      ADD_WORD((uintptr_t)&PC);
+      ADD_BYTE(X86_OP_POP_MEM32);
+      ADD_BYTE(0x05); /* MOD R/M for POP - 0x8F /0 */
+      ADD_WORD((uintptr_t)&nextBB);
+
+#ifndef NOCHAINING
+      /*
+      // Load from register cannot be chained.
+      */
+      ADD_BYTE(X86_OP_MOV_IMM_TO_MEM32);
+      ADD_BYTE(0x05); /* MOD R/M for mov imm32 to rm32 0xC7 /0 */
+      ADD_WORD((uintptr_t)&pTakenCalloutSourceLoc);
+      ADD_WORD(0x00000000);
+#endif /* NOCHAINING */
+
+      ADD_BYTE(X86_OP_CALL);
+      ADD_WORD((uintptr_t)(
+        (intptr_t)&callEndBBTaken - (intptr_t)(instInfo.pX86Addr + count + 4)
+      ));
+      LOG_INSTR(instInfo.pX86Addr,count);
+    }
 
     if(DPREG_INFO.shiftAmt != 0){
       UNSUPPORTED;
