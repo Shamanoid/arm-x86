@@ -179,6 +179,7 @@
 #define X86_OP_SYSTEM_CALL           0x80
 #define X86_OP_AND_MEM32_TO_EAX      0x21          
 #define X86_OP_CMC                   0xF5
+#define X86_OP_XOR_IMM32_AND_EAX     0x35
 
 #define UNSUPPORTED              DP_ASSERT(0,"Unsupported ARM instruction\n")
 typedef enum {

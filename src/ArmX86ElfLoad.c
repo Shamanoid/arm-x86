@@ -90,7 +90,7 @@ void parseElfHeader(FILE *elf, struct elfHeader_t *pElfHeader){
   DP1("ELF Type: %d\n",pElfHeader->e_type);
   DP1("ELF Machine: %d\n",pElfHeader->e_machine);
   DP1("ELF Version: %d\n",pElfHeader->e_version);
-  DP1("ELF Entry: %p\n",pElfHeader->e_entry);
+  DP1("ELF Entry: %p\n",(void *)pElfHeader->e_entry);
   DP1("ELF Program Header Offset: 0x%x\n",pElfHeader->e_phoff);
   DP1("ELF Section Header Offset: 0x%x\n",pElfHeader->e_shoff);
   DP1("ELF Flags: 0x%x\n",pElfHeader->e_flags);
