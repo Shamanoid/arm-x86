@@ -1597,30 +1597,30 @@ swiHandler(void *pInst){
 
   /* copy system call number to EAX */
   ADD_BYTE(X86_OP_MOV_TO_EAX);
-  ADD_WORD((uint32_t) SWI_INFO.intrNum & 0xFF);
+  ADD_WORD((uint32_t) SWI_INFO.intrNum & 0x00FFFFFF);
 
   /* copy R0 -> EBX */
-  ADD_BYTE(X86_OP_MOV_FROM_REG);
+  ADD_BYTE(X86_OP_MOV_TO_REG);
   ADD_BYTE(0x1D);
   ADD_WORD((uintptr_t)&regFile[0]);
 
   /* copy R1 -> ECX */
-  ADD_BYTE(X86_OP_MOV_FROM_REG);
+  ADD_BYTE(X86_OP_MOV_TO_REG);
   ADD_BYTE(0x0D);
   ADD_WORD((uintptr_t)&regFile[1]);
 
   /* copy R2 -> EDX */
-  ADD_BYTE(X86_OP_MOV_FROM_REG);
+  ADD_BYTE(X86_OP_MOV_TO_REG);
   ADD_BYTE(0x15);
   ADD_WORD((uintptr_t)&regFile[2]);
 
   /* copy R3 -> ESI */
-  ADD_BYTE(X86_OP_MOV_FROM_REG);
+  ADD_BYTE(X86_OP_MOV_TO_REG);
   ADD_BYTE(0x35);
   ADD_WORD((uintptr_t)&regFile[3]);
 
   /* copy R4 -> EDI */
-  ADD_BYTE(X86_OP_MOV_FROM_REG);
+  ADD_BYTE(X86_OP_MOV_TO_REG);
   ADD_BYTE(0x3D);
   ADD_WORD((uintptr_t)&regFile[4]);
 
