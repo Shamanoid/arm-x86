@@ -1436,6 +1436,54 @@ mvnHandler(void *pInst){
   return count;
 }
 
+OPCODE_HANDLER_RETURN
+swiHandler(void *pInst){
+  struct decodeInfo_t instInfo = *(struct decodeInfo_t*)pInst;
+  uint8_t count = 0;
+
+  /* copy system call number to EAX */
+  ADD_BYTE(X86_OP_MOV_TO_EAX);
+  // ADD_WORD(...);
+
+  /* copy R0 -> EBX */
+  ADD_BYTE(X86_OP_MOV_FROM_REG);
+  ADD_BYTE(0x1D);
+  ADD_WORD((uintptr_t)&regFile[0]);
+
+  /* copy R1 -> ECX */
+  ADD_BYTE(X86_OP_MOV_FROM_REG);
+  ADD_BYTE(0x0D);
+  ADD_WORD((uintptr_t)&regFile[1]);
+
+  /* copy R2 -> EDX */
+  ADD_BYTE(X86_OP_MOV_FROM_REG);
+  ADD_BYTE(0x15);
+  ADD_WORD((uintptr_t)&regFile[2]);
+
+  /* copy R3 -> ESI */
+  ADD_BYTE(X86_OP_MOV_FROM_REG);
+  ADD_BYTE(0x35);
+  ADD_WORD((uintptr_t)&regFile[3]);
+
+  /* copy R4 -> EDI */
+  ADD_BYTE(X86_OP_MOV_FROM_REG);
+  ADD_BYTE(0x3D);
+  ADD_WORD((uintptr_t)&regFile[4]);
+
+  /* invoke X86 system call */
+  ADD_BYTE(X86_OP_INT_VECTOR);
+  ADD_BYTE(X86_OP_SYSTEM_CALL);
+
+  /* get result from EAX and store it in R0 */
+  ADD_BYTE(X86_OP_MOV_FROM_EAX);
+  ADD_WORD((uintptr_t)&regFile[0]);
+  LOG_INSTR(instInfo.pX86Addr,count);
+
+  DP_ASSERT(0, "Swi not supported\n");
+  return count;
+}
+
+
 /*****************************************************************************
 This is a list of typical ARM instructions and their planned mapping to X86
 instructions.

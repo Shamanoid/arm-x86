@@ -170,6 +170,9 @@
 #define X86_OP_JL                    0x8C
 #define X86_OP_ADD_REG_TO_REG        0x03
 #define X86_OP_MOV_IMM_TO_MEM32      0xC7
+#define X86_OP_INT_VECTOR            0xCD
+#define X86_OP_SYSTEM_CALL           0x80
+
 
 #define UNSUPPORTED              DP_ASSERT(0,"Unsupported ARM instruction\n")
 typedef enum {
@@ -267,6 +270,7 @@ OPCODE_HANDLER_RETURN orrHandler(void *pInst);
 OPCODE_HANDLER_RETURN movHandler(void *pInst);
 OPCODE_HANDLER_RETURN bicHandler(void *pInst);
 OPCODE_HANDLER_RETURN mvnHandler(void *pInst);
+OPCODE_HANDLER_RETURN swiHandler(void *pInst);
 int lsmHandler(void *pInst);
 int lsimmHandler(void *pInst);
 int lsregHandler(void *pInst);
