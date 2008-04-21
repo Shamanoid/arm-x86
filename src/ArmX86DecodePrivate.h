@@ -170,6 +170,7 @@
 #define X86_OP_JL                    0x8C
 #define X86_OP_ADD_REG_TO_REG        0x03
 #define X86_OP_MOV_IMM_TO_MEM32      0xC7
+#define X86_OP_ROR_RM32              0xC1
 #define X86_OP_INT_VECTOR            0xCD
 #define X86_OP_SYSTEM_CALL           0x80
 

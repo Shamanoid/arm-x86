@@ -550,7 +550,10 @@ void decodeBasicBlock(){
           UNSUPPORTED;
         break;
         case INST_TYPE_COP_SWI:
-          UNSUPPORTED;
+          x86InstCount = 0;
+          pX86PC += x86InstCount;
+          instInfo.pX86Addr = pX86PC;
+          DP("************* IGNORING Software Interrupt ****************\n");
         break;
         default:
           UNSUPPORTED;
@@ -927,15 +930,14 @@ OPCODE_HANDLER_RETURN
 andHandler(void *pInst){
   struct decodeInfo_t instInfo = *(struct decodeInfo_t*)pInst;
   uint8_t count = 0;
-
+  
   if(instInfo.immediate == FALSE){
-    DP("Register ");
+    DP("Register\n");
   }else{
-    DP("Immediate ");
+    DP("Immediate\n");
   }
 
   DP_ASSERT(0,"And not supported\n");
-
   return count;
 }
 
@@ -1073,6 +1075,10 @@ addHandler(void *pInst){
   struct decodeInfo_t instInfo = *(struct decodeInfo_t*)pInst;
   uint8_t count = 0;
 
+  /*
+  // FIXME: This check should be done differently depending on whether
+  // the instruction is a register instruction or an immediate instruction.
+  */
   if(DPREG_INFO.S == TRUE){
     DP("Updating flags\n");
 
@@ -1104,19 +1110,24 @@ addHandler(void *pInst){
   }else{
     DP2("Immediate: RN = %d, RD = %d\n",DPIMM_INFO.Rn, DPIMM_INFO.Rd);
 
-    ADD_BYTE(X86_OP_MOV_TO_EAX);
-    ADD_WORD((uintptr_t)&regFile[DPIMM_INFO.Rn]);
-
-    ADD_BYTE(X86_OP_ADD32_TO_EAX);
+    ADD_BYTE(X86_OP_MOV_IMM_TO_EAX);
     ADD_WORD((uint32_t)DPIMM_INFO.imm);
+    
+    if(DPIMM_INFO.rotate != 0){
+      DP_ASSERT(DPIMM_INFO.S == FALSE,"Rotate with carry not supported\n");
+      ADD_BYTE(X86_OP_ROR_RM32);
+      ADD_BYTE(0xC8); /* MOD R/M EAX, /1 */
+      ADD_BYTE(DPIMM_INFO.rotate * 2);
+      DP1("Rotating by %d\n",DPIMM_INFO.rotate * 2);
+    }
+
+    ADD_BYTE(X86_OP_ADD_MEM32_TO_EAX);
+    ADD_BYTE(0x05); /* MODR/M */
+    ADD_WORD((uintptr_t)&regFile[DPREG_INFO.Rn]);
 
     ADD_BYTE(X86_OP_MOV_FROM_EAX);
     ADD_WORD((uintptr_t)&regFile[DPIMM_INFO.Rd]);
     LOG_INSTR(instInfo.pX86Addr,count);
-
-    if(DPIMM_INFO.rotate != 0){ 
-      UNSUPPORTED;
-    }
   }
 
   if(DPREG_INFO.S == TRUE){
