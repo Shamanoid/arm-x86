@@ -194,28 +194,46 @@ uint8_t handleConditional(void *pInst){
   switch(instInfo.cond){
     case COND_EQ:
       /* jne */
-      ADD_BYTE(X86_PRE_JCC)
-      ADD_BYTE(X86_OP_JNE)
+      ADD_BYTE(X86_PRE_JCC);
+      ADD_BYTE(X86_OP_JNE);
     break;
     case COND_NE:
       /* je */
-      ADD_BYTE(X86_PRE_JCC)
-      ADD_BYTE(X86_OP_JE)
+      ADD_BYTE(X86_PRE_JCC);
+      ADD_BYTE(X86_OP_JE);
     break;
     case COND_CS:
+      /* jnc */
+      ADD_BYTE(X86_PRE_JCC);
+      ADD_BYTE(X86_OP_JNC);
+    break;
     case COND_CC:
+      /* jc */
+      ADD_BYTE(X86_PRE_JCC);
+      ADD_BYTE(X86_OP_JC);
+    break;
     case COND_MI:
     case COND_PL:
     case COND_VS:
     case COND_VC:
-    case COND_HI:
-    case COND_LS:
       DP_ASSERT(0,"Unimplemented flag check\n");
-      break;
+    break;
+    case COND_HI:
+      /* cmc + jna */
+      ADD_BYTE(X86_OP_CMC);
+      ADD_BYTE(X86_PRE_JCC);
+      ADD_BYTE(X86_OP_JNA); 
+    break;
+    case COND_LS:
+      /* cmc + jnbe */
+      ADD_BYTE(X86_OP_CMC);
+      ADD_BYTE(X86_PRE_JCC);
+      ADD_BYTE(X86_OP_JNBE); 
+    break;
     case COND_GE:
       /* jl */
-      ADD_BYTE(X86_PRE_JCC)
-      ADD_BYTE(X86_OP_JL)
+      ADD_BYTE(X86_PRE_JCC);
+      ADD_BYTE(X86_OP_JL);
     break;
     case COND_LT:
     case COND_GT:

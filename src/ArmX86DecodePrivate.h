@@ -168,12 +168,17 @@
 #define X86_OP_JLE                   0x8E
 #define X86_OP_JG                    0x8F
 #define X86_OP_JL                    0x8C
+#define X86_OP_JNA                   0x86
+#define X86_OP_JNBE                  0x87
+#define X86_OP_JC                    0x82
+#define X86_OP_JNC                   0x83
 #define X86_OP_ADD_REG_TO_REG        0x03
 #define X86_OP_MOV_IMM_TO_MEM32      0xC7
 #define X86_OP_ROR_RM32              0xC1
 #define X86_OP_INT_VECTOR            0xCD
 #define X86_OP_SYSTEM_CALL           0x80
 #define X86_OP_AND_MEM32_TO_EAX      0x21          
+#define X86_OP_CMC                   0xF5
 
 #define UNSUPPORTED              DP_ASSERT(0,"Unsupported ARM instruction\n")
 typedef enum {
