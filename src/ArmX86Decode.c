@@ -43,6 +43,7 @@ opcodeHandler_t opcodeHandler[NUM_OPCODES] = {
 #define LSREG_INFO              instInfo.armInstInfo.lsreg
 #define LSIMM_INFO              instInfo.armInstInfo.lsimm
 #define BRCH_INFO               instInfo.armInstInfo.branch
+#define SWI_INFO		instInfo.armInstInfo.swi
 
 typedef void (*translator)(void);
 
@@ -1596,7 +1597,7 @@ swiHandler(void *pInst){
 
   /* copy system call number to EAX */
   ADD_BYTE(X86_OP_MOV_TO_EAX);
-  // ADD_WORD(...);
+  ADD_WORD((uint32_t) SWI_INFO.intrNum & 0xFF);
 
   /* copy R0 -> EBX */
   ADD_BYTE(X86_OP_MOV_FROM_REG);

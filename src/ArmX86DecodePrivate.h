@@ -249,7 +249,12 @@ struct decodeInfo_t{
       bool L;
       int32_t offset;
     }branch;
+
+    struct {
+      uint32_t intrNum;
+    } swi;
   }armInstInfo;
+
   uint8_t cond;
   bool immediate; /* True => DPIMM */
   bool endBB; /* Instruction signals end of basic block */
