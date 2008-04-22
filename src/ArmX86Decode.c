@@ -808,10 +808,10 @@ int lsimmHandler(void *pInst){
     DP2("Load: Rd = %d, Rn = %d\n",LSIMM_INFO.Rd, LSIMM_INFO.Rn);
 
     /*
-    // This is an important point. If Rn is the PC, the addressing is PC
-    // relative. The PC should be updated to where the ARM PC is at the
-    // moment. If the code were running on ARM hardware, R15 would be updated
-    // by hardware with each instruction. We need to update it manually here.
+    // If Rn is the PC, the addressing is PC relative. The PC should be
+    // updated to where the ARM PC is at the moment. If the code were 
+    // running on ARM hardware, R15 would be updated by hardware with 
+    // each instruction. We need to update it manually here.
     // Instead of doing the update every instruction, update only when PC is
     // used.
     */
@@ -889,11 +889,131 @@ int lsimmHandler(void *pInst){
 }
 
 int lsregHandler(void *pInst){
-  struct decodeInfo_t instInfo __attribute__((unused))
-    = *(struct decodeInfo_t *)pInst;
+  struct decodeInfo_t instInfo = *(struct decodeInfo_t *)pInst;
   uint8_t count = 0;
 
-  DP_ASSERT(0,"Load-Store Register-Shift not supported\n");
+  DP_ASSERT(LSREG_INFO.B != 1, "Byte transfer not supported\n");
+  DP_ASSERT(LSREG_INFO.P != 0, "Post-Indexed addressing not supported\n");
+  DP_ASSERT(LSREG_INFO.W != 1, "Pre-Indexed addressing not supported\n");
+
+  if(LSREG_INFO.L == 1){
+    DP3("Load: Rd = %d, Rn = %d, Rm = %d\n",
+      LSREG_INFO.Rd,
+      LSREG_INFO.Rn,
+      LSREG_INFO.Rm
+    );
+
+    /*
+    // If Rn is the PC, the addressing is PC relative. The PC should be
+    // updated to where the ARM PC is at the moment. If the code were 
+    // running on ARM hardware, R15 would be updated by hardware with 
+    // each instruction. We need to update it manually here.
+    // Instead of doing the update every instruction, update only when PC is
+    // used.
+    */
+    if(LSREG_INFO.Rn == 15){
+      DP1("PC Relative Instruction. Updating PC to 0x%x\n",
+        (uint32_t)((uint8_t *)pArmPC + 8)
+      );
+
+      ADD_BYTE(X86_OP_MOV_IMM_TO_EAX);
+      ADD_WORD((uint32_t)((uint8_t *)pArmPC + 8));
+
+      ADD_BYTE(X86_OP_MOV_FROM_EAX);
+      ADD_WORD((uintptr_t)&regFile[15]);
+      LOG_INSTR(instInfo.pX86Addr,count);
+    }
+
+    ADD_BYTE(X86_OP_MOV_TO_REG);
+    ADD_BYTE(0x15) /* MODR/M - Mov from disp32 to edx */
+    ADD_WORD((uintptr_t)&regFile[LSREG_INFO.Rn]);
+
+    if(LSREG_INFO.U == 1){
+      ADD_BYTE(X86_OP_ADD_MEM32_TO_REG);
+      ADD_BYTE(0x15); /* MODR/M */
+      ADD_WORD((uintptr_t)&regFile[LSREG_INFO.Rm]);
+    }else{
+      ADD_BYTE(X86_OP_SUB_MEM32_FROM_REG);
+      ADD_BYTE(0x15); /* MODR/M */
+      ADD_WORD((uintptr_t)&regFile[LSREG_INFO.Rm]);
+    }
+
+    ADD_BYTE(X86_OP_MOV_TO_REG);
+    ADD_BYTE(0x82) /* MODR/M - Mov from edx + disp32 to eax */
+    ADD_WORD(0x00000000);
+
+    ADD_BYTE(X86_OP_MOV_FROM_EAX);
+    ADD_WORD((uintptr_t)&regFile[LSREG_INFO.Rd]);
+    LOG_INSTR(instInfo.pX86Addr,count);
+
+    /*
+    // If the destination is the PC, this is the end of a basic block
+    */
+    if(LSREG_INFO.Rd == 15){
+      ((struct decodeInfo_t *)pInst)->endBB = TRUE;
+
+      /*
+      // FIXME: This can be optimized.
+      */
+      ADD_BYTE(X86_OP_PUSH_MEM32);
+      ADD_BYTE(0x35); /* MOD R/M for PUSH - 0xFF /6 */
+      ADD_WORD((uintptr_t)&PC);
+      ADD_BYTE(X86_OP_POP_MEM32);
+      ADD_BYTE(0x05); /* MOD R/M for POP - 0x8F /0 */
+      ADD_WORD((uintptr_t)&nextBB);
+
+#ifndef NOCHAINING
+      ADD_BYTE(X86_OP_MOV_IMM_TO_MEM32);
+      ADD_BYTE(0x05); /* MOD R/M for mov imm32 to rm32 0xC7 /0 */
+      ADD_WORD((uintptr_t)&pTakenCalloutSourceLoc);
+      ADD_WORD((uintptr_t)(instInfo.pX86Addr + count + 4));
+#endif /* NOCHAINING */
+
+      ADD_BYTE(X86_OP_CALL);
+      ADD_WORD((uintptr_t)(
+        (intptr_t)&callEndBBTaken - (intptr_t)(instInfo.pX86Addr + count + 4)
+      ));
+      LOG_INSTR(instInfo.pX86Addr,count);
+    }
+    if(LSREG_INFO.shiftAmt != 0){ 
+      UNSUPPORTED;
+    }
+  }else{
+    DP2("Store: Rd = %d, Rn = %d\n",LSIMM_INFO.Rd, LSIMM_INFO.Rn);
+
+    ADD_BYTE(X86_OP_MOV_TO_REG);
+    ADD_BYTE(0x15) /* MODR/M - Mov from disp32 to edx */
+    ADD_WORD((uintptr_t)&regFile[LSREG_INFO.Rm]);
+
+    if(LSREG_INFO.shiftAmt != 0){
+      if(LSREG_INFO.shiftType == LSL){
+        ADD_BYTE(X86_OP_SHL);
+        ADD_BYTE(0xE2); /* MOD R/M edx /4 */
+        ADD_BYTE(LSREG_INFO.shiftAmt);
+      }else{
+        UNSUPPORTED;
+      }
+    }
+
+    if(LSREG_INFO.U == 1){
+      ADD_BYTE(X86_OP_ADD_MEM32_TO_REG);
+      ADD_BYTE(0x15); /* MODR/M */
+      ADD_WORD((uintptr_t)&regFile[LSREG_INFO.Rn]);
+    }else{
+      ADD_BYTE(X86_OP_SUB_MEM32_FROM_REG);
+      ADD_BYTE(0x15); /* MODR/M */
+      ADD_WORD((uintptr_t)&regFile[LSREG_INFO.Rn]);
+    }
+
+    ADD_BYTE(X86_OP_MOV_TO_EAX);
+    ADD_WORD((uintptr_t)&regFile[LSIMM_INFO.Rd]);
+
+    ADD_BYTE(X86_OP_MOV_FROM_REG);
+    ADD_BYTE(0x82) /* MODR/M - Mov from eax to  edx + disp32 */
+    ADD_WORD(0x00000000);
+    LOG_INSTR(instInfo.pX86Addr,count);
+
+  }
 
   return count;
 }

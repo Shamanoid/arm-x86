@@ -149,6 +149,8 @@
 #define X86_OP_ADD32_TO_EAX          0x05
 #define X86_OP_SUB_MEM32_FROM_EAX    0x2B
 #define X86_OP_ADD_MEM32_TO_EAX      0x03
+#define X86_OP_ADD_MEM32_TO_REG      0x03
+#define X86_OP_SUB_MEM32_FROM_REG    0x2B
 #define X86_OP_MOV_TO_REG            0x8B
 #define X86_OP_MOV_FROM_REG          0x89
 #define X86_OP_MOV_IMM_TO_EAX        0xB8
@@ -180,6 +182,7 @@
 #define X86_OP_AND_MEM32_TO_EAX      0x21          
 #define X86_OP_CMC                   0xF5
 #define X86_OP_XOR_IMM32_AND_EAX     0x35
+#define X86_OP_SHL                   0xC1
 
 #define UNSUPPORTED              DP_ASSERT(0,"Unsupported ARM instruction\n")
 typedef enum {
