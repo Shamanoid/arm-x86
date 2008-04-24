@@ -43,7 +43,6 @@ opcodeHandler_t opcodeHandler[NUM_OPCODES] = {
 #define LSREG_INFO              instInfo.armInstInfo.lsreg
 #define LSIMM_INFO              instInfo.armInstInfo.lsimm
 #define BRCH_INFO               instInfo.armInstInfo.branch
-#define SWI_INFO		instInfo.armInstInfo.swi
 
 typedef void (*translator)(void);
 
@@ -1248,7 +1247,16 @@ rsbHandler(void *pInst){
   }else{
     DP2("Immediate: RN = %d, RD = %d\n",DPIMM_INFO.Rn, DPIMM_INFO.Rd);
 
-    DP_ASSERT(0,"Immediate Reverse subtraction not supported\n");
+    ADD_BYTE(X86_OP_MOV_IMM_TO_EAX);
+    ADD_WORD((uint32_t)DPIMM_INFO.imm);
+
+    ADD_BYTE(X86_OP_SUB_MEM32_FROM_EAX);
+    ADD_BYTE(0x05); /* MODR/M */
+    ADD_WORD((uintptr_t)&regFile[DPIMM_INFO.Rn]);
+
+    ADD_BYTE(X86_OP_MOV_FROM_EAX);
+    ADD_WORD((uintptr_t)&regFile[DPIMM_INFO.Rd]);
+    LOG_INSTR(instInfo.pX86Addr,count);
 
     if(DPIMM_INFO.rotate != 0){ 
       UNSUPPORTED;
@@ -1717,30 +1725,30 @@ swiHandler(void *pInst){
 
   /* copy system call number to EAX */
   ADD_BYTE(X86_OP_MOV_TO_EAX);
-  ADD_WORD((uint32_t) SWI_INFO.intrNum & 0x00FFFFFF);
+  // ADD_WORD(...);
 
   /* copy R0 -> EBX */
-  ADD_BYTE(X86_OP_MOV_TO_REG);
+  ADD_BYTE(X86_OP_MOV_FROM_REG);
   ADD_BYTE(0x1D);
   ADD_WORD((uintptr_t)&regFile[0]);
 
   /* copy R1 -> ECX */
-  ADD_BYTE(X86_OP_MOV_TO_REG);
+  ADD_BYTE(X86_OP_MOV_FROM_REG);
   ADD_BYTE(0x0D);
   ADD_WORD((uintptr_t)&regFile[1]);
 
   /* copy R2 -> EDX */
-  ADD_BYTE(X86_OP_MOV_TO_REG);
+  ADD_BYTE(X86_OP_MOV_FROM_REG);
   ADD_BYTE(0x15);
   ADD_WORD((uintptr_t)&regFile[2]);
 
   /* copy R3 -> ESI */
-  ADD_BYTE(X86_OP_MOV_TO_REG);
+  ADD_BYTE(X86_OP_MOV_FROM_REG);
   ADD_BYTE(0x35);
   ADD_WORD((uintptr_t)&regFile[3]);
 
   /* copy R4 -> EDI */
-  ADD_BYTE(X86_OP_MOV_TO_REG);
+  ADD_BYTE(X86_OP_MOV_FROM_REG);
   ADD_BYTE(0x3D);
   ADD_WORD((uintptr_t)&regFile[4]);
 
