@@ -1,0 +1,527 @@
+
+./main:     file format elf32-littlearm
+./main
+architecture: arm, flags 0x00000112:
+EXEC_P, HAS_SYMS, D_PAGED
+start address 0x00008110
+
+Program Header:
+    LOAD off    0x00008000 vaddr 0x00008000 paddr 0x00008000 align 2**15
+         filesz 0x00007fa4 memsz 0x00007fa4 flags r-x
+    LOAD off    0x000100a4 vaddr 0x000100a4 paddr 0x000100a4 align 2**15
+         filesz 0x000008d4 memsz 0x000009f0 flags rw-
+private flags = 2: [APCS-32] [FPA float format] [has entry point]
+
+Sections:
+Idx Name          Size      VMA       LMA       File off  Algn
+  0 .init         0000001c  00008000  00008000  00008000  2**2
+                  CONTENTS, ALLOC, LOAD, READONLY, CODE
+  1 .text         00007d5c  0000801c  0000801c  0000801c  2**2
+                  CONTENTS, ALLOC, LOAD, READONLY, CODE
+  2 .fini         00000018  0000fd78  0000fd78  0000fd78  2**2
+                  CONTENTS, ALLOC, LOAD, READONLY, CODE
+  3 .rodata       00000214  0000fd90  0000fd90  0000fd90  2**2
+                  CONTENTS, ALLOC, LOAD, READONLY, DATA
+  4 .data         000008bc  000100a4  000100a4  000100a4  2**2
+                  CONTENTS, ALLOC, LOAD, DATA
+  5 .eh_frame     00000004  00010960  00010960  00010960  2**2
+                  CONTENTS, ALLOC, LOAD, READONLY, DATA
+  6 .ctors        00000008  00010964  00010964  00010964  2**2
+                  CONTENTS, ALLOC, LOAD, DATA
+  7 .dtors        00000008  0001096c  0001096c  0001096c  2**2
+                  CONTENTS, ALLOC, LOAD, DATA
+  8 .jcr          00000004  00010974  00010974  00010974  2**2
+                  CONTENTS, ALLOC, LOAD, DATA
+  9 .bss          0000011c  00010978  00010978  00010978  2**2
+                  ALLOC
+ 10 .comment      00000318  00000000  00000000  00010978  2**0
+                  CONTENTS, READONLY
+ 11 .debug_aranges 00000600  00000000  00000000  00010c90  2**3
+                  CONTENTS, READONLY, DEBUGGING
+ 12 .debug_pubnames 0000096c  00000000  00000000  00011290  2**0
+                  CONTENTS, READONLY, DEBUGGING
+ 13 .debug_info   00016dcf  00000000  00000000  00011bfc  2**0
+                  CONTENTS, READONLY, DEBUGGING
+ 14 .debug_abbrev 00003f16  00000000  00000000  000289cb  2**0
+                  CONTENTS, READONLY, DEBUGGING
+ 15 .debug_line   00004341  00000000  00000000  0002c8e1  2**0
+                  CONTENTS, READONLY, DEBUGGING
+ 16 .debug_frame  00000f9c  00000000  00000000  00030c24  2**2
+                  CONTENTS, READONLY, DEBUGGING
+ 17 .debug_str    000019fb  00000000  00000000  00031bc0  2**0
+                  CONTENTS, READONLY, DEBUGGING
+ 18 .stack        00000000  00080000  00080000  000335bb  2**0
+                  CONTENTS
+ 19 .debug_ranges 000001d0  00000000  00000000  000335bb  2**0
+                  CONTENTS, READONLY, DEBUGGING
+SYMBOL TABLE:
+00008000 l    d  .init	00000000 
+0000801c l    d  .text	00000000 
+0000fd78 l    d  .fini	00000000 
+0000fd90 l    d  .rodata	00000000 
+000100a4 l    d  .data	00000000 
+00010960 l    d  .eh_frame	00000000 
+00010964 l    d  .ctors	00000000 
+0001096c l    d  .dtors	00000000 
+00010974 l    d  .jcr	00000000 
+00010978 l    d  .bss	00000000 
+00000000 l    d  .comment	00000000 
+00000000 l    d  .debug_aranges	00000000 
+00000000 l    d  .debug_pubnames	00000000 
+00000000 l    d  .debug_info	00000000 
+00000000 l    d  .debug_abbrev	00000000 
+00000000 l    d  .debug_line	00000000 
+00000000 l    d  .debug_frame	00000000 
+00000000 l    d  .debug_str	00000000 
+00080000 l    d  .stack	00000000 
+00000000 l    d  .debug_ranges	00000000 
+00000000 l    d  *ABS*	00000000 
+00000000 l    d  *ABS*	00000000 
+00000000 l    d  *ABS*	00000000 
+00000000 l    df *ABS*	00000000 crti.asm
+00000000 l    df *ABS*	00000000 <command line>
+00000000 l    df *ABS*	00000000 <built-in>
+00008000 l     F .init	00000000 $a
+0000fd78 l     F .fini	00000000 $a
+00000000 l    df *ABS*	00000000 crtstuff.c
+00010964 l     O .ctors	00000000 __CTOR_LIST__
+00010964 l     O .ctors	00000000 $d
+0001096c l     O .dtors	00000000 __DTOR_LIST__
+0001096c l     O .dtors	00000000 $d
+00010960 l     O .eh_frame	00000000 __EH_FRAME_BEGIN__
+00010974 l     O .jcr	00000000 __JCR_LIST__
+000100a4 l     O .data	00000000 $d
+000100a8 l     O .data	00000000 p.0
+00010978 l       .bss	00000000 completed.1
+0000801c l     F .text	00000000 __do_global_dtors_aux
+0000801c l     F .text	00000000 $a
+00008084 l     O .text	00000000 $d
+00008094 l     F .text	00000000 call___do_global_dtors_aux
+00008094 l     F .text	00000000 $a
+0000fd84 l     F .fini	00000000 $a
+00010979 l     O .bss	00000000 $d
+0001097c l       .bss	00000000 object.2
+000080a4 l     F .text	00000000 frame_dummy
+000080ec l     O .text	00000000 $d
+00008100 l     F .text	00000000 call_frame_dummy
+00008100 l     F .text	00000000 $a
+0000800c l     F .init	00000000 $a
+00000000 l    df *ABS*	00000000 crtstuff.c
+00010968 l     O .ctors	00000000 __CTOR_END__
+00010968 l     O .ctors	00000000 $d
+00010970 l     O .dtors	00000000 __DTOR_END__
+00010970 l     O .dtors	00000000 $d
+00010960 l     O .eh_frame	00000000 __FRAME_END__
+00010960 l     O .eh_frame	00000000 $d
+00010974 l     O .jcr	00000000 __JCR_END__
+00010974 l     O .jcr	00000000 $d
+0000fd28 l     F .text	00000000 __do_global_ctors_aux
+0000fd28 l     F .text	00000000 $a
+0000fd64 l     O .text	00000000 $d
+0000fd68 l     F .text	00000000 call___do_global_ctors_aux
+0000fd68 l     F .text	00000000 $a
+00008010 l     F .init	00000000 $a
+00000000 l    df *ABS*	00000000 crtn.asm
+00000000 l    df *ABS*	00000000 <command line>
+00000000 l    df *ABS*	00000000 <built-in>
+00008014 l     F .init	00000000 $a
+0000fd88 l     F .fini	00000000 $a
+00000000 l    df *ABS*	00000000 <command line>
+00000000 l    df *ABS*	00000000 <built-in>
+00000000 l    df *ABS*	00000000 /srv/shared/gnuarm/newlib-build/arm-elf/newlib/libc/sys/arm//
+00008110 l     F .text	00000000 $a
+00008200 l     O .text	00000000 $d
+000100ac l       .data	00000000 HeapBase
+000100bc l       .data	00000000 CommandLine
+000100ac l     O .data	00000000 $d
+000100b0 l       .data	00000000 HeapLimit
+000100b8 l       .data	00000000 StackLimit
+00000000 l    df *ABS*	00000000 main.c
+00008218 l     F .text	00000000 $a
+00008284 l     O .text	00000000 $d
+00000000 l    df *ABS*	00000000 atexit.c
+00010994 l     O .bss	00000000 $d
+00010994 l       .bss	00000000 lock.0
+00008288 l     F .text	00000000 $a
+00008318 l     O .text	00000000 $d
+00000000 l    df *ABS*	00000000 exit.c
+0000831c l     F .text	00000000 $a
+000083e0 l     O .text	00000000 $d
+00000000 l    df *ABS*	00000000 impure.c
+000101bc l     O .data	00000000 $d
+000101c0 l     O .data	0000037c impure_data
+00000000 l    df *ABS*	00000000 malloc.c
+000083e4 l     F .text	00000000 $a
+000083f4 l     O .text	00000000 $d
+000083f8 l     F .text	00000000 $a
+00008408 l     O .text	00000000 $d
+00000000 l    df *ABS*	00000000 mallocr.c
+00010998 l     O .bss	00000000 $d
+0001053c l     O .data	00000000 $d
+0000840c l     F .text	00000000 $a
+00008a90 l     O .text	00000000 $d
+00000000 l    df *ABS*	00000000 memset.c
+00008aac l     F .text	00000000 $a
+00000000 l    df *ABS*	00000000 mlock.c
+00008b24 l     F .text	00000000 $a
+00000000 l    df *ABS*	00000000 printf.c
+00008b2c l     F .text	00000000 $a
+00008b7c l     O .text	00000000 $d
+00000000 l    df *ABS*	00000000 sbrkr.c
+00008b80 l     F .text	00000000 $a
+00008bbc l     O .text	00000000 $d
+00000000 l    df *ABS*	00000000 syscalls.c
+00008bc0 l     F .text	0000002c findslot
+00008bc0 l     F .text	00000000 $a
+00008be8 l     O .text	00000000 $d
+000109e0 l       .bss	00000000 openfiles
+00008bec l     F .text	0000010c remap_handle
+00008bec l     F .text	00000000 $a
+00008ce4 l     O .text	00000000 $d
+000109d0 l       .bss	00000000 std_files_checked
+000109d4 l       .bss	00000000 monitor_stdin
+000109dc l       .bss	00000000 monitor_stderr
+000109d8 l       .bss	00000000 monitor_stdout
+00008cf8 l     F .text	00000000 $a
+00008da4 l     O .text	00000000 $d
+00008db8 l     F .text	0000003c error
+00008db8 l     F .text	00000000 $a
+00008df4 l     F .text	0000000c wrap
+00008eb8 l     O .text	00000000 $d
+00008ebc l     F .text	00000000 $a
+00008f98 l     O .text	00000000 $d
+00008f9c l     F .text	00000000 $a
+00009074 l     O .text	00000000 $d
+00009078 l     F .text	00000000 $a
+00009128 l     O .text	00000000 $d
+0000912c l     F .text	00000000 $a
+00009198 l     O .text	00000000 $d
+0000919c l     F .text	00000000 $a
+000109cc l     O .bss	00000000 $d
+000109cc l       .bss	00000000 heap_end.0
+00009258 l     O .text	00000000 $d
+00009260 l     F .text	00000000 $a
+000109d0 l     O .bss	00000000 $d
+00000000 l    df *ABS*	00000000 vfprintf.c
+000093d8 l     F .text	00000048 __sprint
+000093d8 l     F .text	00000000 $a
+0000fd9c l     O .rodata	00000010 blanks.0
+0000fdac l     O .rodata	00000010 zeroes.1
+00009580 l     O .text	00000000 $d
+000096e4 l     F .text	00000000 $a
+00009dcc l     O .text	00000000 $d
+00009df0 l     F .text	00000000 $a
+0000a6a4 l     O .text	00000000 $d
+0000a6c0 l     F .text	00000000 $a
+0000ae84 l     O .text	00000000 $d
+0000aea8 l     F .text	00000000 $a
+0000b054 l     O .text	00000000 $d
+00000000 l    df *ABS*	00000000 wcrtomb.c
+0000b058 l     F .text	00000000 $a
+0000b0d0 l     O .text	00000000 $d
+00000000 l    df *ABS*	00000000 wcsrtombs.c
+0000b0d4 l     F .text	00000000 $a
+0000b230 l     O .text	00000000 $d
+00000000 l    df *ABS*	00000000 wctomb_r.c
+0000b234 l     F .text	00000000 $a
+0000b608 l     O .text	00000000 $d
+00000000 l    df *ABS*	00000000 wsetup.c
+0000b61c l     F .text	00000000 $a
+0000b720 l     O .text	00000000 $d
+00000000 l    df *ABS*	00000000 dtoa.c
+0000b724 l     F .text	000001f0 quorem
+0000b724 l     F .text	00000000 $a
+0000bbcc l     O .text	00000000 $d
+0000bbe4 l     F .text	00000000 $a
+0000bcb8 l     O .text	00000000 $d
+0000bd20 l     F .text	00000000 $a
+0000c4e0 l     O .text	00000000 $d
+0000c504 l     F .text	00000000 $a
+0000cc74 l     O .text	00000000 $d
+00000000 l    df *ABS*	00000000 errno.c
+0000cc94 l     F .text	00000000 $a
+0000cca0 l     O .text	00000000 $d
+00000000 l    df *ABS*	00000000 fflush.c
+0000cca4 l     F .text	00000000 $a
+0000cd7c l     O .text	00000000 $d
+00000000 l    df *ABS*	00000000 findfp.c
+0000cd84 l     F .text	0000005c std
+0000cd84 l     F .text	00000000 $a
+0000cdd0 l     O .text	00000000 $d
+0000cde0 l     F .text	00000000 $a
+0000ceb8 l     O .text	00000000 $d
+00010a80 l       .bss	00000000 lock.0
+0000cebc l     F .text	00000000 $a
+0000cf94 l     O .text	00000000 $d
+0000cf98 l     F .text	00000000 $a
+0000cfa0 l     O .text	00000000 $d
+0000cfa4 l     F .text	00000000 $a
+0000cfb0 l     O .text	00000000 $d
+00000000 l    df *ABS*	00000000 mallocr.c
+0000cfb4 l     F .text	00000000 $a
+0000d0ac l     O .text	00000000 $d
+0000d0b8 l     F .text	00000000 $a
+0000d2dc l     O .text	00000000 $d
+00000000 l    df *ABS*	00000000 fvwrite.c
+0000d2ec l     F .text	00000000 $a
+0000d6a0 l     O .text	00000000 $d
+00000000 l    df *ABS*	00000000 fwalk.c
+0000d6a4 l     F .text	00000000 $a
+0000d77c l     O .text	00000000 $d
+00000000 l    df *ABS*	00000000 locale.c
+00010a84 l     O .bss	00000000 $d
+00010958 l     O .data	00000000 $d
+0000fe50 l     O .rodata	00000030 lconv
+0000fe50 l     O .rodata	00000000 $d
+0001095c l     O .data	00000004 charset
+0000d780 l     F .text	00000000 $a
+0000d7dc l     O .text	00000000 $d
+0000d7e4 l     F .text	00000000 $a
+0000d7f0 l     O .text	00000000 $d
+0000d7f4 l     F .text	00000000 $a
+0000d7fc l     O .text	00000000 $d
+0000d800 l     F .text	00000000 $a
+0000d818 l     O .text	00000000 $d
+0000d81c l     F .text	00000000 $a
+0000d828 l     O .text	00000000 $d
+00000000 l    df *ABS*	00000000 makebuf.c
+0000d82c l     F .text	00000000 $a
+0000d978 l     O .text	00000000 $d
+00000000 l    df *ABS*	00000000 memchr.c
+0000d984 l     F .text	00000000 $a
+00000000 l    df *ABS*	00000000 memcpy.c
+0000da5c l     F .text	00000000 $a
+00000000 l    df *ABS*	00000000 memmove.c
+0000daec l     F .text	00000000 $a
+00000000 l    df *ABS*	00000000 mprec.c
+0000fe80 l     O .rodata	00000000 $d
+0000dbc0 l     F .text	00000000 $a
+0000de14 l     O .text	00000000 $d
+0000de18 l     F .text	00000000 $a
+0000ff98 l     O .rodata	0000000c p05.0
+0000e230 l     O .text	00000000 $d
+0000e234 l     F .text	00000000 $a
+0000e7cc l     O .text	00000000 $d
+00000000 l    df *ABS*	00000000 mallocr.c
+0000e7e0 l     F .text	00000000 $a
+0000ec9c l     O .text	00000000 $d
+00000000 l    df *ABS*	00000000 reent.c
+0000eca0 l     F .text	00000000 $a
+0000edd4 l     O .text	00000000 $d
+0000edd8 l     F .text	00000000 $a
+0000ee48 l     O .text	00000000 $d
+00000000 l    df *ABS*	00000000 s_isinf.c
+0000ee4c l     F .text	00000000 $a
+00000000 l    df *ABS*	00000000 s_isnan.c
+0000ee88 l     F .text	00000000 $a
+00000000 l    df *ABS*	00000000 stdio.c
+0000eea8 l     F .text	00000000 $a
+0000eef0 l     O .text	00000000 $d
+0000eef4 l     F .text	00000000 $a
+0000ef5c l     O .text	00000000 $d
+0000ef60 l     F .text	00000000 $a
+0000efac l     O .text	00000000 $d
+0000efb0 l     F .text	00000000 $a
+0000efc0 l     O .text	00000000 $d
+00000000 l    df *ABS*	00000000 strcmp.c
+0000efc4 l     F .text	00000000 $a
+00000000 l    df *ABS*	00000000 strlen.c
+0000f068 l     F .text	00000000 $a
+00000000 l    df *ABS*	00000000 writer.c
+0000f0c8 l     F .text	00000000 $a
+0000f10c l     O .text	00000000 $d
+00000000 l    df *ABS*	00000000 mallocr.c
+0000f110 l     F .text	00000000 $a
+00000000 l    df *ABS*	00000000 closer.c
+0000f1a8 l     F .text	00000000 $a
+0000f1e4 l     O .text	00000000 $d
+00000000 l    df *ABS*	00000000 fstatr.c
+0000f1e8 l     F .text	00000000 $a
+0000f228 l     O .text	00000000 $d
+00000000 l    df *ABS*	00000000 lseekr.c
+0000f22c l     F .text	00000000 $a
+0000f270 l     O .text	00000000 $d
+00000000 l    df *ABS*	00000000 readr.c
+0000f274 l     F .text	00000000 $a
+0000f2b8 l     O .text	00000000 $d
+00000000 l    df *ABS*	00000000 <command line>
+00000000 l    df *ABS*	00000000 <built-in>
+00000000 l    df *ABS*	00000000 /srv/shared/gnuarm/gcc-build/gcc//
+0000f2bc l     F .text	00000000 $a
+00000000 l    df *ABS*	00000000 <command line>
+00000000 l    df *ABS*	00000000 <built-in>
+00000000 l    df *ABS*	00000000 /srv/shared/gnuarm/gcc-build/gcc//
+0000f3b4 l     F .text	00000000 $a
+00000000 l    df *ABS*	00000000 <command line>
+00000000 l    df *ABS*	00000000 <built-in>
+00000000 l    df *ABS*	00000000 /srv/shared/gnuarm/gcc-build/gcc//
+0000f3b8 l     F .text	00000000 $a
+00000000 l    df *ABS*	00000000 <command line>
+00000000 l    df *ABS*	00000000 <built-in>
+00000000 l    df *ABS*	00000000 /srv/shared/gnuarm/gcc-build/gcc//
+0000f740 l     F .text	00000000 $a
+00000000 l    df *ABS*	00000000 <command line>
+00000000 l    df *ABS*	00000000 <built-in>
+00000000 l    df *ABS*	00000000 /srv/shared/gnuarm/gcc-build/gcc//
+0000fc04 l     F .text	00000000 $a
+00000000 l    df *ABS*	00000000 <command line>
+00000000 l    df *ABS*	00000000 <built-in>
+00000000 l    df *ABS*	00000000 /srv/shared/gnuarm/gcc-build/gcc//
+0000fca8 l     F .text	00000000 $a
+0000e778 g     F .text	00000068 _mprec_log10
+0000fe80 g     O .rodata	00000028 __mprec_tinytens
+0000eca0 g     F .text	00000038 cleanup_glue
+0000de18 g     F .text	0000005c _hi0bits
+000091fc g     F .text	00000008 _getpid
+0000fc14 g     F .text	00000094 __cmpdf2
+0000f22c g     F .text	00000048 _lseek_r
+0000fc14 g     F .text	00000094 __eqdf2
+00008b50 g     F .text	00000030 printf
+0000b058 g     F .text	00000050 _wcrtomb_r
+0000ef60 g     F .text	00000050 __sseek
+0000ce40 g     F .text	0000007c __sinit
+0000d780 g     F .text	00000064 _setlocale_r
+0000cde0 g     F .text	00000060 __sfmoreglue
+00008b28 g     F .text	00000004 __malloc_unlock
+00008cf8 g     F .text	000000c0 initialise_monitor_handles
+0000daec g     F .text	000000d4 memmove
+0000cfa4 g     F .text	00000010 _cleanup
+0000dbc0 g     F .text	00000094 _Balloc
+0000fc04 g     F .text	000000a4 __gtdf2
+0000cc94 g     F .text	00000010 __errno
+0000e5d4 g     F .text	00000124 _d2b
+0000df30 g     F .text	000001f0 _multiply
+00010a94 g       *ABS*	00000000 _bss_end__
+0000f1e8 g     F .text	00000044 _fstat_r
+00010a90 g     O .bss	00000004 errno
+0000e6f8 g     F .text	00000080 _ratio
+0000dd40 g     F .text	000000d8 _s2b
+0000df08 g     F .text	00000028 _i2b
+0000da5c g     F .text	00000090 memcpy
+0000cf98 g     F .text	0000000c _cleanup_r
+0000f6c8 g     F .text	0000002c __floatsidf
+0000fc0c g     F .text	0000009c __ltdf2
+000083e4 g     F .text	00000014 malloc
+00008b2c g     F .text	00000024 _printf_r
+0000f2bc g     F .text	000000f8 __udivsi3
+00009388 g     F .text	00000008 isatty
+00009260 g     F .text	00000038 _fstat
+0000fed0 g     O .rodata	000000c8 __mprec_tens
+0000d7e4 g     F .text	00000010 __locale_charset
+000109c8 g     O .bss	00000004 __malloc_top_pad
+00010978 g       *ABS*	00000000 __bss_start__
+000100a4 g     O .data	00000000 .hidden __dso_handle
+00010958 g     O .data	00000004 __mb_cur_max
+0000d7f4 g     F .text	0000000c _localeconv_r
+00008b80 g     F .text	00000040 _sbrk_r
+0000d82c g     F .text	00000158 __smakebuf
+0000f274 g     F .text	00000048 _read_r
+0001094c g     O .data	0000000c __lc_ctype
+0000cca4 g     F .text	000000e0 fflush
+000109c4 g     O .bss	00000004 __malloc_max_sbrked_mem
+0000f6f4 g     F .text	0000004c __extendsfdf2
+0000f3bc g     F .text	000002e4 __adddf3
+0000e7e0 g     F .text	000004c0 _realloc_r
+0000de74 g     F .text	00000094 _lo0bits
+00008110 g       .text	00000000 _mainCRTStartup
+0000fea8 g     O .rodata	00000028 __mprec_bigtens
+0000912c g     F .text	00000020 _open
+0000f6a0 g     F .text	00000028 __floatunsidf
+00009204 g     F .text	0000005c _sbrk
+0000e330 g     F .text	00000054 __mcmp
+00008000 g       .init	00000000 _init
+00009300 g     F .text	00000004 _raise
+0000934c g     F .text	0000003c _times
+0000ecd8 g     F .text	00000100 _reclaim_reent
+0000fca8 g     F .text	00000080 __fixdfsi
+0000ee4c g     F .text	0000003c isinf
+0000fc0c g     F .text	0000009c __ledf2
+00009298 g     F .text	00000058 _stat
+00010a8c g     O .bss	00000004 __nlocale_changed
+0000edd8 g     F .text	00000074 _wrapup_reent
+00000000  w      *UND*	00000000 __deregister_frame_info
+00010a94 g       *ABS*	00000000 end
+000100b4 g       .data	00000000 __stack_base__
+0000e120 g     F .text	00000114 _pow5mult
+0000d984 g     F .text	000000d8 memchr
+00010a94 g       *ABS*	00000000 __bss_end__
+0000d0b8 g     F .text	00000234 _free_r
+0000b0d4 g     F .text	0000011c _wcsrtombs_r
+00010a88 g     O .bss	00000004 __mlocale_changed
+0001053c g     O .data	00000004 __malloc_sbrk_base
+00008110 g       .text	00000000 _start
+00008f9c g     F .text	00000018 _lseek
+0000b1f0 g     F .text	00000044 wcsrtombs
+00010998 g     O .bss	00000028 __malloc_current_mallinfo
+0000d2ec g     F .text	000003b8 __sfvwrite
+0000f1a8 g     F .text	00000040 _close_r
+0000f998 g     F .text	0000026c __divdf3
+0000cebc g     F .text	000000dc __sfp
+00010544 g     O .data	00000408 __malloc_av_
+0000f740 g     F .text	00000258 __muldf3
+0000eea8 g     F .text	0000004c __sread
+00008b24 g     F .text	00000004 __malloc_lock
+0000f110 g     F .text	00000098 _calloc_r
+00010978 g       *ABS*	00000000 __bss_start
+00008aac g     F .text	00000078 memset
+00008218 g     F .text	00000070 main
+000092f0 g     F .text	00000008 _link
+000109c0 g     O .bss	00000004 __malloc_max_total_mem
+0000f3b4 g     F .text	00000004 __div0
+0000e4b8 g     F .text	00000068 _ulp
+0000efb0 g     F .text	00000014 __sclose
+0000b914 g     F .text	00001380 _dtoa_r
+0000840c g     F .text	000006a0 _malloc_r
+0000d6a4 g     F .text	000000dc _fwalk
+00010a94 g       *ABS*	00000000 __end__
+00008fb4 g     F .text	0000004c _swiwrite
+000093b8 g     F .text	00000020 _rename
+0000cfb4 g     F .text	00000104 _malloc_trim_r
+0000efc4 g     F .text	000000a4 strcmp
+0000fc14 g     F .text	00000094 __nedf2
+0000fd78 g       .fini	00000000 _fini
+0000b61c g     F .text	00000108 __swsetup
+00010a84 g     O .bss	00000004 _PathLocale
+00008ebc g     F .text	000000e0 _swilseek
+00008288 g     F .text	00000094 atexit
+0000f0c8 g     F .text	00000048 _write_r
+0000e520 g     F .text	000000b4 _b2d
+0000d800 g     F .text	0000001c setlocale
+000101bc g     O .data	00000004 _impure_ptr
+0000914c g     F .text	00000050 _swiclose
+0000ee88 g     F .text	00000020 isnan
+00009078 g     F .text	000000b4 _swiopen
+000092f8 g     F .text	00000008 _unlink
+0000d81c g     F .text	00000010 localeconv
+0000dc70 g     F .text	000000d0 _multadd
+00009000 g     F .text	00000078 _write
+00010978 g       *ABS*	00000000 _edata
+00010a94 g       *ABS*	00000000 _end
+0000eef4 g     F .text	0000006c __swrite
+00010540 g     O .data	00000004 __malloc_trim_threshold
+0000831c g     F .text	000000c8 exit
+0000e384 g     F .text	00000134 __mdiff
+000091d4 g     F .text	00000028 _kill
+00008110 g       .text	00000000 start
+00009304 g     F .text	00000048 _gettimeofday
+00008e4c g     F .text	00000070 _read
+000091b4 g     F .text	00000020 _exit
+0000f068 g     F .text	00000060 strlen
+0000fc04 g     F .text	000000a4 __gedf2
+00080000 g       .stack	00000000 _stack
+000100a4 g       .data	00000000 __data_start
+0000b234 g     F .text	000003e8 _wctomb_r
+00000000  w      *UND*	00000000 _Jv_RegisterClasses
+0000f3b8 g     F .text	000002e8 __subdf3
+00009420 g     F .text	00001be0 _vfprintf_r
+00000000  w      *UND*	00000000 __register_frame_info
+0000b0a8 g     F .text	0000002c wcrtomb
+00009390 g     F .text	00000028 _system
+0000b000 g     F .text	00000058 vfprintf
+00008e00 g     F .text	0000004c _swiread
+0000919c g     F .text	00000018 _close
+0000e234 g     F .text	000000fc _lshift
+000083f8 g     F .text	00000014 free
+0000dc54 g     F .text	0000001c _Bfree
+
+
