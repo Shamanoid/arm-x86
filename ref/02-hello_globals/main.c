@@ -1,10 +1,8 @@
-int a,b,c;
+int a = 7,b = 5,c;
 int x,y,z;
 
 
 int _start(){
-  a = 7;
-  b = 5;
   c = a + b;
 
   z = x + y;
