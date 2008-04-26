@@ -748,29 +748,6 @@ int lsmHandler(void *pInst){
       */
       if(i == 15){
         ((struct decodeInfo_t *)pInst)->endBB = TRUE;
-
-        ADD_BYTE(X86_OP_PUSH_MEM32);
-        ADD_BYTE(0x35); /* MOD R/M for PUSH - 0xFF /6 */
-        ADD_WORD((uintptr_t)&PC);
-        ADD_BYTE(X86_OP_POP_MEM32);
-        ADD_BYTE(0x05); /* MOD R/M for POP - 0x8F /0 */
-        ADD_WORD((uintptr_t)&nextBB);
-
-#ifndef NOCHAINING
-        /*
-        // Load from register cannot be chained.
-        */
-        ADD_BYTE(X86_OP_MOV_IMM_TO_MEM32);
-        ADD_BYTE(0x05); /* MOD R/M for mov imm32 to rm32 0xC7 /0 */
-        ADD_WORD((uintptr_t)&pTakenCalloutSourceLoc);
-        ADD_WORD(0x00000000);
-#endif /* NOCHAINING */
-
-        ADD_BYTE(X86_OP_CALL);
-        ADD_WORD((uintptr_t)(
-          (intptr_t)&callEndBBTaken - (intptr_t)(instInfo.pX86Addr + count + 4)
-        ));
-        LOG_INSTR(instInfo.pX86Addr,count);
       }
     }
   }
@@ -787,6 +764,31 @@ int lsmHandler(void *pInst){
 
     ADD_BYTE(X86_OP_MOV_FROM_EAX);
     ADD_WORD((uintptr_t)&regFile[LSMULT_INFO.Rn]);
+    LOG_INSTR(instInfo.pX86Addr,count);
+  }
+
+  if(((struct decodeInfo_t *)pInst)->endBB == TRUE){
+    ADD_BYTE(X86_OP_PUSH_MEM32);
+    ADD_BYTE(0x35); /* MOD R/M for PUSH - 0xFF /6 */
+    ADD_WORD((uintptr_t)&PC);
+    ADD_BYTE(X86_OP_POP_MEM32);
+    ADD_BYTE(0x05); /* MOD R/M for POP - 0x8F /0 */
+    ADD_WORD((uintptr_t)&nextBB);
+
+#ifndef NOCHAINING
+    /*
+    // Load from register cannot be chained.
+    */
+    ADD_BYTE(X86_OP_MOV_IMM_TO_MEM32);
+    ADD_BYTE(0x05); /* MOD R/M for mov imm32 to rm32 0xC7 /0 */
+    ADD_WORD((uintptr_t)&pTakenCalloutSourceLoc);
+    ADD_WORD(0x00000000);
+#endif /* NOCHAINING */
+
+    ADD_BYTE(X86_OP_CALL);
+    ADD_WORD((uintptr_t)(
+      (intptr_t)&callEndBBTaken - (intptr_t)(instInfo.pX86Addr + count + 4)
+    ));
     LOG_INSTR(instInfo.pX86Addr,count);
   }
 
