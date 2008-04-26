@@ -117,17 +117,22 @@ void parseProgramHeader(FILE *elf, struct programHeader_t *pProgramHeader){
   DP1("Program Segment Offset: %d\n",pProgramHeader->p_offset);
   DP1("Program Virtual Address: 0x%x\n",pProgramHeader->p_vaddr);
   DP1("Program Physical Address: 0x%x\n",pProgramHeader->p_paddr);
-  DP1("Program Segment File Image Size: %d\n",pProgramHeader->p_filesz);
-  DP1("Program Segment Memory Image Size: %d\n",pProgramHeader->p_memsz);
+  DP2("Program Segment File Image Size: %d, 0x%x\n",
+    pProgramHeader->p_filesz,
+    pProgramHeader->p_filesz
+  );
+  DP2("Program Segment Memory Image Size: %d, 0x%x\n",
+    pProgramHeader->p_memsz,
+    pProgramHeader->p_memsz
+  );
   DP1("Program Header Flags: 0x%x\n",pProgramHeader->p_flags);
   DP1("Program Header Alignment: 0x%x\n",pProgramHeader->p_align);
 }
 
 uint32_t* armX86ElfLoad(char *elfFile){
   struct elfHeader_t elfHeader;
-  uint32_t i, *instr;
+  uint32_t i, *instr = 0, j;
   int elfFd;
-  struct stat sBuf;
 
   DP_HI;
 
@@ -140,10 +145,6 @@ uint32_t* armX86ElfLoad(char *elfFile){
   char *ptr;
   if((ptr = strrchr(elfFile, '.')) != NULL) *ptr = '\0';
   sprintf(outputFileName,"%s.img",elfFile);
-  if((bin = fopen(outputFileName,"wb")) == NULL){
-    DP("Could not open file for writing\n");
-    return NULL;
-  }
 
   parseElfHeader(elf,&elfHeader);
 
@@ -163,57 +164,93 @@ uint32_t* armX86ElfLoad(char *elfFile){
   }
 
   /*
-  // FIXME:
-  // When loading a program, check that it will fit in memory
-  // Determine correctly exactly when this loop will end
+  // The current strategy for loading the elf file is as follows:
+  // Create a dummy file that is mmap-ed to the desired starting address
+  //   with the size being the sum of the sizes mem-sizes of all the
+  //   segments. This is an approximation because the segments may
+  //   be overlapping. The file is mmap-ed as read/write.
+  // Populate the memory area which corresponds to the mmap-ed file from
+  //   the source ARM binary.
+  // This seems like an ungainly way of achieving the laoding function, but
+  //   it works for now.
   */
-  for(i=0; i<elfHeader.e_phnum; i++){
-    struct programHeader_t *programHeader = 
-     (struct programHeader_t *)malloc(sizeof(struct programHeader_t));
-    parseProgramHeader(elf, programHeader);
+  uint8_t *inst = 0;
+  uint32_t numBytesRead = 0;
+  struct programHeader_t *pProgramHeader =
+      (struct programHeader_t *)malloc(sizeof(struct programHeader_t));
 
-    uint32_t inst;
-    fseek(elf, programHeader->p_paddr, SEEK_SET);
-    for(i=0; i<programHeader->p_filesz; i++){
-      fread(&inst,1,4,elf);
-      fwrite(&inst,1,4,bin);
+  uint32_t imageSize = 0;
+  uint32_t imageLoc = 0;
+  for(i=0; i<elfHeader.e_phnum; i++){
+    fseek(elf, elfHeader.e_phoff + i * elfHeader.e_phentsize, SEEK_SET);
+    parseProgramHeader(elf, pProgramHeader);
+    if(i == 0){
+      imageLoc = pProgramHeader->p_paddr;
     }
+    imageSize += pProgramHeader->p_memsz;
   }
 
-  fclose(elf);
+  if((bin = fopen(outputFileName,"wb")) == NULL){
+    DP("Could not open file for writing\n");
+    return NULL;
+  }
+
+  uint32_t temp = 0;
+  for(i=0; i<imageSize; i+=4){
+    fwrite(&temp,1,4,bin);
+  }
   fclose(bin);
 
-  if((elfFd = open(outputFileName,O_RDONLY)) == -1){
+  if((elfFd = open(outputFileName,O_RDWR)) == -1){
     DP1("Unable to open image for loading: %x\n",errno);
     return NULL;
   }
 
-  if((stat(outputFileName, &sBuf)) == -1){
-    DP1("Unable to stat image file: %x\n",errno);
-    return NULL;
-  }
-
+  DP1("Image location is 0x%x.",imageLoc);
   instr = (uint32_t *)mmap(
-    (caddr_t)0x00008000,
-    sBuf.st_size,
-    PROT_READ,
+    (caddr_t)imageLoc,
+    imageSize,
+    (PROT_READ | PROT_WRITE | PROT_EXEC),
     MAP_SHARED,
     elfFd,
     0
   );
+  /*
+  // FIXME:
+  // This is BAD hack
+  */
+  imageSize = 0x100000;
 
   if(instr == (uint32_t *)-1){
-    DP1("Could not load image file to memory: %x\n",errno);
+    perror("Could not load image file to memory");
     return NULL;
   }
+  DP1("Loaded image file at %p\n",instr);
 
-  DP1("Loaded image file at 0x%p\n",instr);
+  for(i=0; i<elfHeader.e_phnum; i++){
+    fseek(elf, elfHeader.e_phoff + i * elfHeader.e_phentsize, SEEK_SET);
+    parseProgramHeader(elf, pProgramHeader);
+
+    inst = (uint8_t *)(pProgramHeader->p_vaddr);
+    fseek(elf, pProgramHeader->p_offset, SEEK_SET);
+    numBytesRead = fread((void *)inst,1,pProgramHeader->p_filesz,elf);
+
+    if(pProgramHeader->p_filesz != 0){
+      DP_ASSERT(numBytesRead != 0,"Encountered file read error\n");
+    }
+
+    for(j=pProgramHeader->p_filesz; j<pProgramHeader->p_memsz; j++){
+      *(inst+j) = 0;
+    }
+  }
 
   if(close(elfFd) == -1){
     DP("Failed to close image file post-loading\n");
   }
+  free(pProgramHeader);
+  fclose(elf);
   free(outputFileName);  
 
   DP_BYE;
-  return (void *)elfHeader.e_entry;
+  return (uint32_t *)elfHeader.e_entry;
 }
