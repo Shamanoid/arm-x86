@@ -236,8 +236,14 @@ uint8_t handleConditional(void *pInst){
       ADD_BYTE(X86_OP_JL);
     break;
     case COND_LT:
+      /* jnl or jge */
+      ADD_BYTE(X86_PRE_JCC);
+      ADD_BYTE(X86_OP_JNL);
+    break;
     case COND_GT:
-      DP_ASSERT(0,"Unimplemented flag check\n");
+      /* jng or jle */
+      ADD_BYTE(X86_PRE_JCC);
+      ADD_BYTE(X86_OP_JNG);
     break;
     case COND_LE:
       /* jg */

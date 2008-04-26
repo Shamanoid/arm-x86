@@ -170,6 +170,8 @@
 #define X86_OP_JLE                   0x8E
 #define X86_OP_JG                    0x8F
 #define X86_OP_JL                    0x8C
+#define X86_OP_JNG                   0x8E /* Same as JLE */
+#define X86_OP_JNL                   0x8D /* Same as JGE */
 #define X86_OP_JNA                   0x86
 #define X86_OP_JNBE                  0x87
 #define X86_OP_JC                    0x82
