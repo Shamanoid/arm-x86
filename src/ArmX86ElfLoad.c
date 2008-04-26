@@ -184,9 +184,7 @@ uint32_t* armX86ElfLoad(char *elfFile){
   for(i=0; i<elfHeader.e_phnum; i++){
     fseek(elf, elfHeader.e_phoff + i * elfHeader.e_phentsize, SEEK_SET);
     parseProgramHeader(elf, pProgramHeader);
-    if(i == 0){
-      imageLoc = pProgramHeader->p_paddr;
-    }
+    imageLoc = 0x8000;
     imageSize += pProgramHeader->p_memsz;
   }
 
@@ -195,6 +193,11 @@ uint32_t* armX86ElfLoad(char *elfFile){
     return NULL;
   }
 
+  /*
+  // FIXME:
+  // This is BAD hack
+  */
+  imageSize = 0x100000;
   uint32_t temp = 0;
   for(i=0; i<imageSize; i+=4){
     fwrite(&temp,1,4,bin);
@@ -215,11 +218,6 @@ uint32_t* armX86ElfLoad(char *elfFile){
     elfFd,
     0
   );
-  /*
-  // FIXME:
-  // This is BAD hack
-  */
-  imageSize = 0x100000;
 
   if(instr == (uint32_t *)-1){
     perror("Could not load image file to memory");

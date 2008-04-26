@@ -319,7 +319,7 @@ void decodeBasicBlock(){
 
     while(instInfo.endBB == FALSE){
       DP2("Processing instruction: 0x%x @ %p\n",*pArmPC, (void *)pArmPC);
-
+      DP1("x86PC = %p\n",pX86PC);
       count = 0;
       armInst = *pArmPC;
       instInfo.pArmAddr = pArmPC;
