@@ -808,8 +808,6 @@ int lsimmHandler(void *pInst){
   DP("\tLoad-Store Immediate\n");
 
   DP_ASSERT(LSIMM_INFO.B != 1, "Byte transfer not supported\n");
-  DP_ASSERT(LSIMM_INFO.P != 0, "Post-Indexed addressing not supported\n");
-  DP_ASSERT(LSIMM_INFO.W != 1, "Pre-Indexed addressing not supported\n");
 
   if(LSIMM_INFO.L == 1){
     DP2("Load: Rd = %d, Rn = %d\n",LSIMM_INFO.Rd, LSIMM_INFO.Rn);
@@ -841,11 +839,35 @@ int lsimmHandler(void *pInst){
 
     ADD_BYTE(X86_OP_MOV_TO_REG);
     ADD_BYTE(0x82) /* MODR/M - Mov from edx + disp32 to eax */
-    ADD_WORD((int32_t)LSIMM_INFO.imm * (LSIMM_INFO.U == 0?-1:1));
+
+    if(LSIMM_INFO.P == 0){
+      /*
+      // Indexing is post addressed - the base address is used to address
+      // memory and updated by applying the offset later.
+      */
+      ADD_WORD(0x00000000);
+    }else{
+      ADD_WORD((int32_t)LSIMM_INFO.imm * (LSIMM_INFO.U == 0?-1:1));
+    }
 
     ADD_BYTE(X86_OP_MOV_FROM_EAX);
     ADD_WORD((uintptr_t)&regFile[LSIMM_INFO.Rd]);
     LOG_INSTR(instInfo.pX86Addr,count);
+
+    /*
+    // If the base register needs to be updated with the offset, do that now.
+    */
+    if(LSIMM_INFO.P == 0 || LSIMM_INFO.W == 1){
+      ADD_BYTE(X86_OP_MOV_IMM_TO_EAX);
+      ADD_WORD((int32_t)LSIMM_INFO.imm * (LSIMM_INFO.U == 0?-1:1))
+
+      ADD_BYTE(X86_OP_ADD_REG_TO_REG);
+      ADD_BYTE(0xC2); /* EDX and EAX, EAX is the destination */
+
+      ADD_BYTE(X86_OP_MOV_FROM_EAX);
+      ADD_WORD((uintptr_t)&regFile[LSIMM_INFO.Rn]);
+      LOG_INSTR(instInfo.pX86Addr,count);
+    }
 
     /*
     // If the destination is the PC, this is the end of a basic block
@@ -888,7 +910,30 @@ int lsimmHandler(void *pInst){
 
     ADD_BYTE(X86_OP_MOV_FROM_REG);
     ADD_BYTE(0x82) /* MODR/M - Mov from eax to  edx + disp32 */
-    ADD_WORD((int32_t)LSIMM_INFO.imm * (LSIMM_INFO.U == 0?-1:1));
+    if(LSIMM_INFO.P == 0){
+      /*
+      // Indexing is post addressed - the base address is used to address
+      // memory and updated by applying the offset later.
+      */
+      ADD_WORD(0x00000000);
+    }else{
+      ADD_WORD((int32_t)LSIMM_INFO.imm * (LSIMM_INFO.U == 0?-1:1));
+    }
+
+    /*
+    // If the base register needs to be updated with the offset, do that now.
+    */
+    if(LSIMM_INFO.P == 0 || LSIMM_INFO.W == 1){
+      ADD_BYTE(X86_OP_MOV_IMM_TO_EAX);
+      ADD_WORD((int32_t)LSIMM_INFO.imm * (LSIMM_INFO.U == 0?-1:1))
+
+      ADD_BYTE(X86_OP_ADD_REG_TO_REG);
+      ADD_BYTE(0xC2); /* EDX and EAX, EAX is the destination */
+
+      ADD_BYTE(X86_OP_MOV_FROM_EAX);
+      ADD_WORD((uintptr_t)&regFile[LSIMM_INFO.Rn]);
+      LOG_INSTR(instInfo.pX86Addr,count);
+    }
     LOG_INSTR(instInfo.pX86Addr,count);
   }
 
@@ -1194,19 +1239,29 @@ subHandler(void *pInst){
   }else{
     DP2("Immediate: RN = %d, RD = %d\n",DPIMM_INFO.Rn, DPIMM_INFO.Rd);
 
+    ADD_BYTE(X86_OP_MOV_IMM_TO_EAX);
+    ADD_WORD((uint32_t)DPIMM_INFO.imm);
+
+    if(DPIMM_INFO.rotate != 0){
+      DP_ASSERT(DPIMM_INFO.S == FALSE,"Rotate with carry not supported\n");
+      ADD_BYTE(X86_OP_ROR_RM32);
+      ADD_BYTE(0xC8); /* MOD R/M EAX, /1 */
+      ADD_BYTE(DPIMM_INFO.rotate * 2);
+      DP1("Rotating by %d\n",DPIMM_INFO.rotate * 2);
+    }
+
+    ADD_BYTE(X86_OP_MOV_TO_REG);
+    ADD_BYTE(0xD0); /* MOD R/M EAX to EDX */
+
     ADD_BYTE(X86_OP_MOV_TO_EAX);
     ADD_WORD((uintptr_t)&regFile[DPIMM_INFO.Rn]);
 
-    ADD_BYTE(X86_OP_SUB32_FROM_EAX);
-    ADD_WORD((uint32_t)DPIMM_INFO.imm);
+    ADD_BYTE(X86_OP_SUB_RM32_FROM_REG);
+    ADD_BYTE(0xC2); /* MOD RM EDX from EAX */
 
     ADD_BYTE(X86_OP_MOV_FROM_EAX);
     ADD_WORD((uintptr_t)&regFile[DPIMM_INFO.Rd]);
     LOG_INSTR(instInfo.pX86Addr,count);
-
-    if(DPIMM_INFO.rotate != 0){ 
-      UNSUPPORTED;
-    }
   }
 
   if(DPREG_INFO.S == TRUE){
@@ -1306,19 +1361,32 @@ addHandler(void *pInst){
     DP2("Register: RN = %d\nRD = %d\n",DPREG_INFO.Rn, DPREG_INFO.Rd);
 
     ADD_BYTE(X86_OP_MOV_TO_EAX);
-    ADD_WORD((uintptr_t)&regFile[DPREG_INFO.Rn]);
+    ADD_WORD((uintptr_t)&regFile[DPREG_INFO.Rm]);
+
+    if(DPREG_INFO.shiftAmt != 0){
+      /*
+      // The Rm operand needs to be shifted. The amount of shift may either
+      // be an immediate value or a value in a register. Further, the shift
+      // may be of one of 5 types. Handle all this here.
+      */
+      if(DPREG_INFO.shiftImm == TRUE){
+        if(DPREG_INFO.shiftType == LSL){
+          ADD_BYTE(X86_OP_SHL);
+          ADD_BYTE(0xE0); /* MOD R/M eax /4 */
+          ADD_BYTE(DPREG_INFO.shiftAmt);
+        }
+      }else{
+        UNSUPPORTED;
+      }
+    }
 
     ADD_BYTE(X86_OP_ADD_MEM32_TO_EAX);
     ADD_BYTE(0x05); /* MODR/M */
-    ADD_WORD((uintptr_t)&regFile[DPREG_INFO.Rm]);
+    ADD_WORD((uintptr_t)&regFile[DPREG_INFO.Rn]);
 
     ADD_BYTE(X86_OP_MOV_FROM_EAX);
     ADD_WORD((uintptr_t)&regFile[DPREG_INFO.Rd]);
     LOG_INSTR(instInfo.pX86Addr,count);
-
-    if(DPREG_INFO.shiftAmt != 0){ 
-      UNSUPPORTED;
-    }
   }else{
     DP2("Immediate: RN = %d, RD = %d\n",DPIMM_INFO.Rn, DPIMM_INFO.Rd);
 

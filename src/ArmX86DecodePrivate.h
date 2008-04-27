@@ -151,6 +151,7 @@
 #define X86_OP_ADD_MEM32_TO_EAX      0x03
 #define X86_OP_ADD_MEM32_TO_REG      0x03
 #define X86_OP_SUB_MEM32_FROM_REG    0x2B
+#define X86_OP_SUB_RM32_FROM_REG     0x2B
 #define X86_OP_MOV_TO_REG            0x8B
 #define X86_OP_MOV_FROM_REG          0x89
 #define X86_OP_MOV_IMM_TO_EAX        0xB8
