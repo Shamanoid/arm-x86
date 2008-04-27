@@ -1702,13 +1702,76 @@ bicHandler(void *pInst){
   struct decodeInfo_t instInfo = *(struct decodeInfo_t*)pInst;
   uint8_t count = 0;
 
-  if(instInfo.immediate == FALSE){
-    DP("Register bic\n");
-  }else{
-    DP("Immediate bic\n");
+  /*
+  // FIXME: This check should be done differently depending on whether
+  // the instruction is a register instruction or an immediate instruction.
+  */
+  if(DPREG_INFO.S == TRUE){
+    DP("Updating flags\n");
+
+    ADD_BYTE(X86_OP_PUSH_MEM32);
+    ADD_BYTE(0x35); /* MOD R/M for PUSH - 0xFF /6 */
+    ADD_WORD((uintptr_t)&x86Flags);
+    ADD_BYTE(X86_OP_POPF);
+    LOG_INSTR(instInfo.pX86Addr,count);
+    DP("Loading Flags\n");
   }
 
-  DP_ASSERT(0,"Bic not supported\n");
+  if(instInfo.immediate == FALSE){
+    DP2("Register: RM = %d\nRD = %d\n",DPREG_INFO.Rm, DPREG_INFO.Rd);
+
+    ADD_BYTE(X86_OP_MOV_TO_EAX);
+    ADD_WORD((uintptr_t)&regFile[DPREG_INFO.Rm]);
+
+    ADD_BYTE(X86_OP_NOT_RM32);
+    ADD_BYTE(0xD0); /* MOD R/M EAX /2 */
+
+    ADD_BYTE(X86_OP_AND_MEM32_TO_EAX);
+    ADD_BYTE(0x05); /* MODR/M */
+    ADD_WORD((uintptr_t)&regFile[DPREG_INFO.Rn]);
+
+    ADD_BYTE(X86_OP_MOV_FROM_EAX);
+    ADD_WORD((uintptr_t)&regFile[DPREG_INFO.Rd]);
+    LOG_INSTR(instInfo.pX86Addr,count);
+
+    if(DPREG_INFO.shiftAmt != 0){ 
+      UNSUPPORTED;
+    }
+  }else{
+    DP2("Immediate: Value = %d, RD = %d\n",DPIMM_INFO.imm, DPIMM_INFO.Rd);
+
+    ADD_BYTE(X86_OP_MOV_IMM_TO_EAX);
+    ADD_WORD((uint32_t)DPIMM_INFO.imm);
+
+    ADD_BYTE(X86_OP_NOT_RM32);
+    ADD_BYTE(0xD0); /* MOD R/M EAX /2 */
+    
+    if(DPIMM_INFO.rotate != 0){
+      DP_ASSERT(DPIMM_INFO.S == FALSE,"Rotate with carry not supported\n");
+      ADD_BYTE(X86_OP_ROR_RM32);
+      ADD_BYTE(0xC8); /* MOD R/M EAX, /1 */
+      ADD_BYTE(DPIMM_INFO.rotate * 2);
+      DP1("Rotating by %d\n",DPIMM_INFO.rotate * 2);
+    }
+
+    ADD_BYTE(X86_OP_AND_MEM32_TO_EAX);
+    ADD_BYTE(0x05); /* MODR/M */
+    ADD_WORD((uintptr_t)&regFile[DPREG_INFO.Rn]);
+
+    ADD_BYTE(X86_OP_MOV_FROM_EAX);
+    ADD_WORD((uintptr_t)&regFile[DPIMM_INFO.Rd]);
+    LOG_INSTR(instInfo.pX86Addr,count);
+  }
+
+  if(DPREG_INFO.S == TRUE){
+    ADD_BYTE(X86_OP_PUSHF);
+    ADD_BYTE(X86_OP_POP_MEM32);
+    ADD_BYTE(0x05); /* MOD R/M for PUSH - 0xFF /6 */
+    ADD_WORD((uintptr_t)&x86Flags);
+    LOG_INSTR(instInfo.pX86Addr,count);
+    DP("Storing Flags\n");
+  }
+
   return count;
 }
 

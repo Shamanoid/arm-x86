@@ -155,6 +155,7 @@
 #define X86_OP_MOV_TO_REG            0x8B
 #define X86_OP_MOV_FROM_REG          0x89
 #define X86_OP_MOV_IMM_TO_EAX        0xB8
+#define X86_OP_NOT_RM32              0xF7
 #define X86_OP_PUSH_MEM32            0xFF
 #define X86_OP_POPF                  0x9D
 #define X86_OP_POP_MEM32             0x8F
@@ -182,7 +183,7 @@
 #define X86_OP_ROR_RM32              0xC1
 #define X86_OP_INT_VECTOR            0xCD
 #define X86_OP_SYSTEM_CALL           0x80
-#define X86_OP_AND_MEM32_TO_EAX      0x21          
+#define X86_OP_AND_MEM32_TO_EAX      0x23          
 #define X86_OP_CMC                   0xF5
 #define X86_OP_XOR_IMM32_AND_EAX     0x35
 #define X86_OP_SHL                   0xC1
