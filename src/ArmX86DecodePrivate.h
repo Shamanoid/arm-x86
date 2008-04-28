@@ -185,7 +185,8 @@
 #define X86_OP_ROR_RM32              0xC1
 #define X86_OP_INT_VECTOR            0xCD
 #define X86_OP_SYSTEM_CALL           0x80
-#define X86_OP_AND_MEM32_TO_EAX      0x23          
+#define X86_OP_AND_MEM32_TO_EAX      0x23
+#define X86_OP_OR_MEM32_TO_EAX       0x0B        
 #define X86_OP_CMC                   0xF5
 #define X86_OP_XOR_IMM32_AND_EAX     0x35
 #define X86_OP_SHL                   0xC1
