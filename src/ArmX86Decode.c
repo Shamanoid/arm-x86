@@ -6,12 +6,7 @@
 #include "ArmX86DecodePrivate.h"
 #include "ArmX86CodeGen.h"
 
-int32_t regFile[NUM_ARM_REGISTERS] = {
-  0x0, 0x1, 0x2, 0x3,
-  0x4, 0x5, 0x6, 0x7,
-  0x8, 0x9, 0xA, 0xB,
-  0xC, 0xD, 0xE, 0xF
-};
+int32_t regFile[NUM_ARM_REGISTERS];
 
 uint32_t cpsr;     /* ARM Program Status Register for user mode */
 uint32_t x86Flags; /* x86 Flag Register */
@@ -73,7 +68,7 @@ typedef void (*translator)(void);
   printf("\n");                                  \
   printf("Flags = 0x%x\n",x86Flags);             \
   printf("=========\n");                         \
-}                                                \
+}
 
 #else
 
@@ -110,8 +105,8 @@ void callEndBBTaken(){
   DP1("Offset from call location = 0x%x\n",
     (intptr_t)&callEndBBTaken - (intptr_t)pTakenCalloutSourceLoc);
 
+  uint8_t *nextX86BB;
   if(pTakenCalloutSourceLoc != 0x00000000){
-    uint8_t *nextX86BB;
     DP2("Caller Dump: 0x%x 0x%x\n",
       *(uint8_t *)pTakenCalloutSourceLoc,
       *(uint32_t *)((uint8_t *)pTakenCalloutSourceLoc + 1)
@@ -139,6 +134,7 @@ void callEndBBNotTaken(){
   DP_HI;
 
 #ifndef NOCHAINING
+  uint8_t *nextX86BB;
   DP1("I am %p\n",&callEndBBNotTaken);
   DP1("Got here from address %p\n",pUntakenCalloutSourceLoc);
   DP1("Offset from call location = 0x%x\n",
@@ -149,10 +145,10 @@ void callEndBBNotTaken(){
   );
   DP1("Next BB Address = %p\n",nextBB);
 
-  uint8_t *nextX86BB;
   if((nextX86BB = (uint8_t *)INDEXED_BLOCK((void *)nextBB)) == NULL){
     nextX86BB = pX86PC;
   }
+
   DP1("Chaining BB to %p\n",nextX86BB);
   *(uint8_t *)pUntakenCalloutSourceLoc = X86_OP_JMP;
   *(uint32_t *)((uint8_t*)pUntakenCalloutSourceLoc + 1) = (uintptr_t)nextX86BB
@@ -302,7 +298,6 @@ void decodeBasicBlock(){
   uint32_t x86InstCount;
   uint8_t *pCondJumpOffsetAddr = 0;
   uint8_t count = 0;
-
   DP_HI;
 
   DP1("x86PC = %p\n",pX86PC);
@@ -1827,13 +1822,16 @@ movHandler(void *pInst){
     ADD_BYTE(X86_OP_MOV_IMM_TO_EAX);
     ADD_WORD((uint32_t)DPIMM_INFO.imm);
 
+    if(DPIMM_INFO.rotate != 0){
+      ADD_BYTE(X86_OP_ROR_RM32);
+      ADD_BYTE(0xC8); /* MOD R/M EAX, /1 */
+      ADD_BYTE(DPIMM_INFO.rotate * 2);
+      DP1("Rotating by %d\n",DPIMM_INFO.rotate * 2);
+    }
+
     ADD_BYTE(X86_OP_MOV_FROM_EAX);
     ADD_WORD((uintptr_t)&regFile[DPIMM_INFO.Rd]);
     LOG_INSTR(instInfo.pX86Addr,count);
-
-    if(DPIMM_INFO.rotate != 0){
-      UNSUPPORTED;
-    }
   }
 
   return count;
