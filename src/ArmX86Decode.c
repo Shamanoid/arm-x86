@@ -807,8 +807,6 @@ int lsimmHandler(void *pInst){
 
   DP("\tLoad-Store Immediate\n");
 
-  DP_ASSERT(LSIMM_INFO.B != 1, "Byte transfer not supported\n");
-
   if(LSIMM_INFO.L == 1){
     DP2("Load: Rd = %d, Rn = %d\n",LSIMM_INFO.Rd, LSIMM_INFO.Rn);
 
@@ -837,8 +835,15 @@ int lsimmHandler(void *pInst){
     ADD_BYTE(0x15) /* MODR/M - Mov from disp32 to edx */
     ADD_WORD((uintptr_t)&regFile[LSIMM_INFO.Rn]);
 
-    ADD_BYTE(X86_OP_MOV_TO_REG);
-    ADD_BYTE(0x82) /* MODR/M - Mov from edx + disp32 to eax */
+    if(LSIMM_INFO.B != 1){
+      ADD_BYTE(X86_OP_MOV_TO_REG);
+      ADD_BYTE(0x82) /* MODR/M - Mov from edx + disp32 to eax */
+    }else{
+      ADD_BYTE(X86_OP_MOV_IMM_TO_EAX);
+      ADD_WORD(0x00000000);
+      ADD_BYTE(X86_OP_MOV_RM8_TO_REG);
+      ADD_BYTE(0x82) /* MODR/M - Mov from edx + disp32 to al */
+    }
 
     if(LSIMM_INFO.P == 0){
       /*
@@ -908,8 +913,13 @@ int lsimmHandler(void *pInst){
     ADD_BYTE(X86_OP_MOV_TO_EAX);
     ADD_WORD((uintptr_t)&regFile[LSIMM_INFO.Rd]);
 
-    ADD_BYTE(X86_OP_MOV_FROM_REG);
-    ADD_BYTE(0x82) /* MODR/M - Mov from eax to  edx + disp32 */
+    if(LSIMM_INFO.B != 1){
+      ADD_BYTE(X86_OP_MOV_FROM_REG);
+      ADD_BYTE(0x82) /* MODR/M - Mov from eax to  edx + disp32 */
+    }else{
+      ADD_BYTE(X86_OP_MOV_REG_TO_RM8);
+      ADD_BYTE(0x82) /* MODR/M - Mov from al to  edx + disp32 */
+    }
     if(LSIMM_INFO.P == 0){
       /*
       // Indexing is post addressed - the base address is used to address
@@ -1472,13 +1482,64 @@ tstHandler(void *pInst){
   struct decodeInfo_t instInfo = *(struct decodeInfo_t*)pInst;
   uint8_t count = 0;
 
-  if(instInfo.immediate == FALSE){
-    DP("\tRegister ");
-  }else{
-    DP("\tImmediate ");
+  DP_HI;
+
+  /*
+  // FIXME: This check should be done differently depending on whether
+  // the instruction is a register instruction or an immediate instruction.
+  */
+  if(DPREG_INFO.S == TRUE){
+    DP("Updating flags\n");
+
+    ADD_BYTE(X86_OP_PUSH_MEM32);
+    ADD_BYTE(0x35); /* MOD R/M for PUSH - 0xFF /6 */
+    ADD_WORD((uintptr_t)&x86Flags);
+    ADD_BYTE(X86_OP_POPF);
+    LOG_INSTR(instInfo.pX86Addr,count);
+    DP("Loading Flags\n");
   }
 
-  DP_ASSERT(0,"tst not supported\n");
+  if(instInfo.immediate == FALSE){
+    DP2("Register: RN = %d\nRD = %d\n",DPREG_INFO.Rn, DPREG_INFO.Rd);
+
+    ADD_BYTE(X86_OP_MOV_TO_EAX);
+    ADD_WORD((uintptr_t)&regFile[DPREG_INFO.Rn]);
+
+    ADD_BYTE(X86_OP_AND_MEM32_TO_EAX);
+    ADD_BYTE(0x05); /* MODR/M */
+    ADD_WORD((uintptr_t)&regFile[DPREG_INFO.Rm]);
+
+    if(DPREG_INFO.shiftAmt != 0){ 
+      UNSUPPORTED;
+    }
+  }else{
+    DP2("Immediate: RN = %d, RD = %d\n",DPIMM_INFO.Rn, DPIMM_INFO.Rd);
+
+    ADD_BYTE(X86_OP_MOV_IMM_TO_EAX);
+    ADD_WORD((uint32_t)DPIMM_INFO.imm);
+    
+    if(DPIMM_INFO.rotate != 0){
+      ADD_BYTE(X86_OP_ROR_RM32);
+      ADD_BYTE(0xC8); /* MOD R/M EAX, /1 */
+      ADD_BYTE(DPIMM_INFO.rotate * 2);
+      DP1("Rotating by %d\n",DPIMM_INFO.rotate * 2);
+    }
+
+    ADD_BYTE(X86_OP_AND_MEM32_TO_EAX);
+    ADD_BYTE(0x05); /* MODR/M */
+    ADD_WORD((uintptr_t)&regFile[DPREG_INFO.Rn]);
+  }
+
+  if(DPREG_INFO.S == TRUE){
+    ADD_BYTE(X86_OP_PUSHF);
+    ADD_BYTE(X86_OP_POP_MEM32);
+    ADD_BYTE(0x05); /* MOD R/M for PUSH - 0xFF /6 */
+    ADD_WORD((uintptr_t)&x86Flags);
+    LOG_INSTR(instInfo.pX86Addr,count);
+    DP("Storing Flags\n");
+  }
+
+  DP_BYE;
   return count;
 }
 

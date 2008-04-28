@@ -145,6 +145,8 @@
 */
 #define X86_OP_MOV_TO_EAX            0xA1
 #define X86_OP_MOV_FROM_EAX          0xA3
+#define X86_OP_MOV_RM8_TO_REG        0x8A
+#define X86_OP_MOV_REG_TO_RM8        0x88
 #define X86_OP_SUB32_FROM_EAX        0x2D
 #define X86_OP_ADD32_TO_EAX          0x05
 #define X86_OP_SUB_MEM32_FROM_EAX    0x2B
