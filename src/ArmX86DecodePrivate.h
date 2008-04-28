@@ -158,6 +158,7 @@
 #define X86_OP_MOV_FROM_REG          0x89
 #define X86_OP_MOV_IMM_TO_EAX        0xB8
 #define X86_OP_NOT_RM32              0xF7
+#define X86_OP_NEG_RM32              0xF7
 #define X86_OP_PUSH_MEM32            0xFF
 #define X86_OP_POPF                  0x9D
 #define X86_OP_POP_MEM32             0x8F

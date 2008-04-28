@@ -1632,31 +1632,39 @@ cmnHandler(void *pInst){
     DP2("Register: Rn = %d, Rm = %d\n",DPREG_INFO.Rn, DPREG_INFO.Rm);
 
     ADD_BYTE(X86_OP_MOV_TO_EAX);
-    ADD_WORD((uintptr_t)&regFile[DPREG_INFO.Rn]);
-
-    ADD_BYTE(X86_OP_ADD_MEM32_TO_EAX);
-    ADD_BYTE(0x05); /* MODR/M */
     ADD_WORD((uintptr_t)&regFile[DPREG_INFO.Rm]);
+
+    ADD_BYTE(X86_OP_NEG_RM32);
+    ADD_BYTE(0xD8); /* MOD R/M EAX /3 */
+
+    ADD_BYTE(X86_OP_CMP_MEM32_WITH_REG);
+    ADD_BYTE(0x05); /* MODR/M */
+    ADD_WORD((uintptr_t)&regFile[DPREG_INFO.Rn]);
     LOG_INSTR(instInfo.pX86Addr,count);
 
     if(DPREG_INFO.shiftAmt != 0){ 
       UNSUPPORTED;
     }
+    UNSUPPORTED;
   }else{
     DP2("Immediate: Rn = %d, Rm = %d\n",DPREG_INFO.Rn, DPREG_INFO.Rm);
 
-    ADD_BYTE(X86_OP_MOV_TO_EAX);
-    ADD_WORD((uintptr_t)&regFile[DPIMM_INFO.Rn]);
-
-    ADD_BYTE(X86_OP_CMP32_WITH_EAX);
+    ADD_BYTE(X86_OP_MOV_IMM_TO_EAX);
     ADD_WORD((uint32_t)DPIMM_INFO.imm * -1);
+    
+    if(DPIMM_INFO.rotate != 0){
+      ADD_BYTE(X86_OP_ROR_RM32);
+      ADD_BYTE(0xC8); /* MOD R/M EAX, /1 */
+      ADD_BYTE(DPIMM_INFO.rotate * 2);
+      DP1("Rotating by %d\n",DPIMM_INFO.rotate * 2);
+    }
+
+    ADD_BYTE(X86_OP_CMP_MEM32_WITH_REG);
+    ADD_BYTE(0x05); /* MODR/M */
+    ADD_WORD((uint32_t)&regFile[DPREG_INFO.Rn]);
     DP1("Comparing with 0x%x\n",((uint32_t)DPIMM_INFO.imm * -1));
 
     LOG_INSTR(instInfo.pX86Addr,count);
-
-    if(DPIMM_INFO.rotate != 0){ 
-      UNSUPPORTED;
-    }
   }
 
   if(DPREG_INFO.S == TRUE){
