@@ -16,57 +16,61 @@
 #define EM_ARM              40
 
 struct elfHeader_t{
-  unsigned           char e_ident[EI_NIDENT];
-  uint16_t           e_type;
-  uint16_t           e_machine;
-  uint32_t           e_version;
-  uint32_t           e_entry;
-  uint32_t           e_phoff;
-  uint32_t           e_shoff;
-  uint32_t           e_flags;
-  uint16_t           e_ehsize;
-  uint16_t           e_phentsize;
-  uint16_t           e_phnum;
-  uint16_t           e_shentsize;
-  uint16_t           e_shnum;
-  uint16_t           e_shstrndx;
+    unsigned           char e_ident[EI_NIDENT];
+    uint16_t           e_type;
+    uint16_t           e_machine;
+    uint32_t           e_version;
+    uint32_t           e_entry;
+    uint32_t           e_phoff;
+    uint32_t           e_shoff;
+    uint32_t           e_flags;
+    uint16_t           e_ehsize;
+    uint16_t           e_phentsize;
+    uint16_t           e_phnum;
+    uint16_t           e_shentsize;
+    uint16_t           e_shnum;
+    uint16_t           e_shstrndx;
 };
 
 struct programHeader_t{
-  uint32_t           p_type;
-  uint32_t           p_offset;
-  uint32_t           p_vaddr;
-  uint32_t           p_paddr;
-  uint32_t           p_filesz;
-  uint32_t           p_memsz;
-  uint32_t           p_flags;
-  uint32_t           p_align;
+    uint32_t           p_type;
+    uint32_t           p_offset;
+    uint32_t           p_vaddr;
+    uint32_t           p_paddr;
+    uint32_t           p_filesz;
+    uint32_t           p_memsz;
+    uint32_t           p_flags;
+    uint32_t           p_align;
 };
 
 struct symTableEntry_t{
-  uint32_t           st_name;
-  uint32_t           st_value;
-  uint32_t           st_size;
-  unsigned char      st_info;
-  unsigned char      st_other;
-  uint16_t           st_shndx;
+    uint32_t           st_name;
+    uint32_t           st_value;
+    uint32_t           st_size;
+    unsigned char      st_info;
+    unsigned char      st_other;
+    uint16_t           st_shndx;
 };
 
 FILE *elf, *bin;
 
-#define READ_ELF32_HALF(elem,elf) { int numBytes; 			\
-                                    numBytes = fread((elem),1,2,elf);	\
-                                    if(numBytes < 2){			\
-                                      DP("End of File reached\n");	\
-                                    }					\
-                                  }					\
+#define READ_ELF32_HALF(elem,elf)             \
+    do {                                      \
+        int numBytes;                         \
+        numBytes = fread((elem),1,2,elf);     \
+        if (numBytes < 2) {                   \
+            DP("End of File reached\n");      \
+        }                                     \
+    } while(0)                                \
 
-#define READ_ELF32_WORD(elem,elf) { int numBytes;                       \
-                                    numBytes = fread((elem),1,4,elf);	\
-                                    if(numBytes < 4){			\
-                                      DP("End of File reached\n");	\
-                                    }					\
-                                  }					\
+#define READ_ELF32_WORD(elem,elf)             \
+    do {                                      \
+        int numBytes;                         \
+        numBytes = fread((elem),1,4,elf);     \
+        if (numBytes < 4) {                   \
+            DP("End of File reached\n");      \
+        }                                     \
+    }                                         \
 
 void parseElfHeader(FILE *elf, struct elfHeader_t *pElfHeader){
   int numBytesRead;
