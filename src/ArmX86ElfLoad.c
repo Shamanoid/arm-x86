@@ -61,7 +61,7 @@ FILE *elf, *bin;
         if (numBytes < 2) {                   \
             DP("End of File reached\n");      \
         }                                     \
-    } while(0)                                \
+    } while(0)
 
 #define READ_ELF32_WORD(elem,elf)             \
     do {                                      \
@@ -70,25 +70,25 @@ FILE *elf, *bin;
         if (numBytes < 4) {                   \
             DP("End of File reached\n");      \
         }                                     \
-    }                                         \
+    } while (0)
 
 void parseElfHeader(FILE *elf, struct elfHeader_t *pElfHeader){
   int numBytesRead;
 
   numBytesRead = fread(pElfHeader->e_ident, 1, EI_NIDENT, elf);
-  READ_ELF32_HALF(&pElfHeader->e_type, elf)
-  READ_ELF32_HALF(&pElfHeader->e_machine, elf)
-  READ_ELF32_WORD(&pElfHeader->e_version, elf)
-  READ_ELF32_WORD(&pElfHeader->e_entry, elf)
-  READ_ELF32_WORD(&pElfHeader->e_phoff, elf)
-  READ_ELF32_WORD(&pElfHeader->e_shoff, elf)
-  READ_ELF32_WORD(&pElfHeader->e_flags, elf)
-  READ_ELF32_HALF(&pElfHeader->e_ehsize, elf)
-  READ_ELF32_HALF(&pElfHeader->e_phentsize, elf)
-  READ_ELF32_HALF(&pElfHeader->e_phnum, elf)
-  READ_ELF32_HALF(&pElfHeader->e_shentsize, elf)
-  READ_ELF32_HALF(&pElfHeader->e_shnum, elf)
-  READ_ELF32_HALF(&pElfHeader->e_shstrndx, elf)
+  READ_ELF32_HALF(&pElfHeader->e_type, elf);
+  READ_ELF32_HALF(&pElfHeader->e_machine, elf);
+  READ_ELF32_WORD(&pElfHeader->e_version, elf);
+  READ_ELF32_WORD(&pElfHeader->e_entry, elf);
+  READ_ELF32_WORD(&pElfHeader->e_phoff, elf);
+  READ_ELF32_WORD(&pElfHeader->e_shoff, elf);
+  READ_ELF32_WORD(&pElfHeader->e_flags, elf);
+  READ_ELF32_HALF(&pElfHeader->e_ehsize, elf);
+  READ_ELF32_HALF(&pElfHeader->e_phentsize, elf);
+  READ_ELF32_HALF(&pElfHeader->e_phnum, elf);
+  READ_ELF32_HALF(&pElfHeader->e_shentsize, elf);
+  READ_ELF32_HALF(&pElfHeader->e_shnum, elf);
+  READ_ELF32_HALF(&pElfHeader->e_shstrndx, elf);
 
   DP1("Elf Header Identification: %s\n",pElfHeader->e_ident);
   DP1("ELF Type: %d\n",pElfHeader->e_type);
@@ -108,14 +108,14 @@ void parseElfHeader(FILE *elf, struct elfHeader_t *pElfHeader){
 
 void parseProgramHeader(FILE *elf, struct programHeader_t *pProgramHeader){
 
-  READ_ELF32_WORD(&pProgramHeader->p_type, elf)
-  READ_ELF32_WORD(&pProgramHeader->p_offset, elf)
-  READ_ELF32_WORD(&pProgramHeader->p_vaddr, elf)
-  READ_ELF32_WORD(&pProgramHeader->p_paddr, elf)
-  READ_ELF32_WORD(&pProgramHeader->p_filesz, elf)
-  READ_ELF32_WORD(&pProgramHeader->p_memsz, elf)
-  READ_ELF32_WORD(&pProgramHeader->p_flags, elf)
-  READ_ELF32_WORD(&pProgramHeader->p_align, elf)
+  READ_ELF32_WORD(&pProgramHeader->p_type, elf);
+  READ_ELF32_WORD(&pProgramHeader->p_offset, elf);
+  READ_ELF32_WORD(&pProgramHeader->p_vaddr, elf);
+  READ_ELF32_WORD(&pProgramHeader->p_paddr, elf);
+  READ_ELF32_WORD(&pProgramHeader->p_filesz, elf);
+  READ_ELF32_WORD(&pProgramHeader->p_memsz, elf);
+  READ_ELF32_WORD(&pProgramHeader->p_flags, elf);
+  READ_ELF32_WORD(&pProgramHeader->p_align, elf);
 
   DP1("Program Header Type: %d\n",pProgramHeader->p_type);
   DP1("Program Segment Offset: %d\n",pProgramHeader->p_offset);
