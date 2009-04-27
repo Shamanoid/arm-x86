@@ -27,7 +27,6 @@ main(int argc, char *argv[])
     }
 
     if ((memMap.pArmInstr = armX86ElfLoad(argv[1])) == NULL) {
-        DP_ASSERT(0,"Exiting..");
         exit(-1);
     }
 
