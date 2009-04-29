@@ -54,7 +54,28 @@ struct symTableEntry_t {
     uint16_t        st_shndx;
 };
 
-FILE *elf, *bin;
+FILE *elf;
+
+/*
+ * Data structures to capture information about segments of the process image in
+ * memory; used to map and unmap memory areas in the image.
+ */
+typedef enum segmentType_e {
+    EXCLUSIVE,
+    SUBSEGMENT,
+    INTERSECTING,
+    NUM_SEGMENT_TYPES
+} segmentType_t;
+char *segTypeString[NUM_SEGMENT_TYPES] = {"EXCLUSIVE", "SUBSEGMENT", "INTERSECTING"};
+
+struct segment_t {
+    struct programHeader_t *progHdr;
+    struct segment_t *next;
+    segmentType_t segType;
+    int segmentMapped;
+};
+
+static struct segment_t *segmentList = NULL;
 
 /*
  * FIXME: EOF handling (esp. premature) should be done better.
@@ -194,22 +215,41 @@ parseProgramHeader(FILE *elf, struct programHeader_t *programHeader)
     showProgramHeader(programHeader);
 }
 
-typedef enum segmentType_e {
-    EXCLUSIVE,
-    SUBSEGMENT,
-    INTERSECTING,
-    NUM_SEGMENT_TYPES
-} segmentType_t;
-char *segTypeString[NUM_SEGMENT_TYPES] = {"EXCLUSIVE", "SUBSEGMENT", "INTERSECTING"};
+/*
+ * Check the header to see if the ELF is valid.
+ *     Must be an ARM executable.
+ *     FIXME: Check more conditions.
+ *
+ * Return: 0 is invalid
+ *         1 otherwise
+ */
+static int
+isElfValid(const struct elfHeader_t *elfHeader)
+{
+    if (elfHeader->e_type != ET_EXEC) {
+        DP("Invalid ELF: Non-executable image\n");
+        return 0;
+    }
 
-struct segment_t {
-    struct programHeader_t *progHdr;
-    struct segment_t *next;
-    segmentType_t segType;
-};
+    if (elfHeader->e_machine != EM_ARM) {
+        DP("Invalid ELF: Not ARM executable\n");
+        return 0;
+    }
 
-static struct segment_t *segmentList = NULL;
+    if (elfHeader->e_phoff == 0) {
+        DP("Invalid ELF: Process image cannot be created\n");
+        return 0;
+    }
 
+    return 1;
+}
+
+/*
+ * Create a new segment_t instance for a segment in the process
+ * image.
+ *
+ * Return: Address of the segment instance, or NULL
+ */
 static struct segment_t *
 createSegment(struct programHeader_t *programHeader)
 {
@@ -222,13 +262,21 @@ createSegment(struct programHeader_t *programHeader)
     newSegment->progHdr = programHeader;
     newSegment->next = NULL;
     newSegment->segType = EXCLUSIVE;
+    newSegment->segmentMapped = 0;
 
     return newSegment;
 }
 
+/*
+ * Add a  segment to a global list of segments.
+ *
+ * Return: None.
+ */
 static inline void
 addSegmentToList(struct segment_t *seg)
 {
+    panic(seg != NULL, ("Null segment being added to list"));
+
     if (segmentList == NULL) {
         segmentList = seg;
 	seg->next = NULL;
@@ -238,6 +286,11 @@ addSegmentToList(struct segment_t *seg)
     }
 }
 
+/* 
+ * Clear the global list of segments.
+ *
+ * Return: None.
+ */
 static void
 clearSegmentList()
 {
@@ -257,6 +310,13 @@ clearSegmentList()
     segmentList = NULL;
 }
 
+/*
+ * Display all segments discovered thus far, and their properties.
+ * To be used as a debuggin aid. Information is displayed only in
+ * debug builds.
+ *
+ * Return: None
+ */
 static void
 showSegments()
 {
@@ -275,9 +335,110 @@ showSegments()
     }
 }
 
-static void
-sortSegmentsBySize()
+/*
+ * Allocate space in the x86 process image for the ARM image segments.
+ * There are expected to be text and data segments. Only exclusive segments
+ * are mapped.
+ *
+ * Mapping a segment may fail for a variety of reasons.
+ *
+ * Return: -1 if mapping failed.
+ *          0 if mapping ok.
+ */
+static int
+mapSegments()
 {
+    struct segment_t *temp = segmentList;
+    uintptr_t *addr;
+
+    if (!segmentList) {
+        debug(("No segments in list!\n"));
+        return 0;
+    }
+
+    while (temp) {
+        if (temp->segType == EXCLUSIVE) {
+            debug(("Mapping segment starting at 0x%08x\n", temp->progHdr->p_vaddr));
+
+            addr = mmap((void *)temp->progHdr->p_vaddr, temp->progHdr->p_memsz,
+	                PROT_READ, MAP_ANONYMOUS | MAP_FIXED, -1, 0);
+
+	    if (addr == (void *)-1) {
+                sys_err(("Failed to map segment of executable"));
+		return -1;
+	    } else {
+	        temp->segmentMapped = 1;
+            }
+        }
+
+	temp = temp->next;
+    }
+
+    return 0;
+}
+
+/*
+ * Unmap all the exclusive segments that have been mapped so far. A flag in
+ * the segment data structure indicates whether the segment was mapped
+ * successfully.
+ *
+ * Return: None.
+ * FIXME: Check for the return valud of munmap.
+ */
+static void
+unmapSegments()
+{
+    struct segment_t *temp = segmentList;
+
+    if (!segmentList) {
+	debug(("No segments in list!\n"));
+        return;
+    }
+    
+    while (temp) {
+	debug(("Unmapping segment starting at 0x%08x\n", temp->progHdr->p_vaddr));
+
+        if (temp->segType == EXCLUSIVE && temp->segmentMapped) {
+            munmap((void *)temp->progHdr->p_vaddr, temp->progHdr->p_memsz);
+	}
+
+        temp = temp->next;
+    }
+}
+
+/*
+ * Initialize the mapped portion of the segment from the elf file. The size
+ * of the segment in the file may be less than the size of the segment in
+ * memory. The difference is required to be initialized to 0. This does not
+ * have to be done explicitly. The anonymous mapping automatically initializes
+ * the memory area to 0.
+ *
+ * Return: None
+ */
+static void
+initSegments()
+{
+    struct segment_t *temp = segmentList;
+    uint32_t numBytesRead;
+    uint8_t *inst;
+
+    if (!segmentList) {
+        debug(("No segments to initialize in list"));
+	return;
+    }
+
+    while (temp) {
+        inst = (uint8_t *)(temp->progHdr->p_vaddr);
+        fseek(elf, temp->progHdr->p_offset, SEEK_SET);
+        numBytesRead = fread((void *)inst, 1, temp->progHdr->p_filesz, elf);
+    
+        if (temp->progHdr->p_filesz != 0) {
+            panic(numBytesRead != 0, ("Encountered read error loading elf"));
+        }
+
+        temp = temp->next;
+    }
+
 }
 
 /*
@@ -333,6 +494,12 @@ compareSegments(struct segment_t *ref, struct segment_t *newseg)
     }
 }
 
+/*
+ * Determine whether the segment is exclusive, subsegment or an intersecting
+ * segment relative to all the segments discovered thus far.
+ *
+ * Return: None
+ */
 static void
 classifySegment(struct segment_t *seg)
 {
@@ -351,47 +518,13 @@ classifySegment(struct segment_t *seg)
     }
 }
 
-/*
- * Check the header to see if the ELF is valid.
- *     Must be an ARM executable.
- *     FIXME: Check more conditions.
- *
- * Return: 0 is invalid
- *         1 otherwise
- *
- */
-static int
-isElfValid(const struct elfHeader_t *elfHeader)
-{
-    if (elfHeader->e_type != ET_EXEC) {
-        DP("Invalid ELF: Non-executable image\n");
-        return 0;
-    }
-
-    if (elfHeader->e_machine != EM_ARM) {
-        DP("Invalid ELF: Not ARM executable\n");
-        return 0;
-    }
-
-    if (elfHeader->e_phoff == 0) {
-        DP("Invalid ELF: Process image cannot be created\n");
-        return 0;
-    }
-
-    return 1;
-}
-
 uint32_t *
 armX86ElfLoad(char *elfFile)
 {
     struct elfHeader_t elfHeader;
     struct programHeader_t *programHeader;
-    uint32_t i, *instr = 0, j;
-    uint8_t *inst = 0;
-    uint32_t numBytesRead = 0;
+    uint32_t i;
     uint32_t *entryPoint = NULL;
-    uint32_t imageSize = 0;
-    uint32_t imageLoc = 0;
 
     debug_in;
 
@@ -437,49 +570,28 @@ armX86ElfLoad(char *elfFile)
 	addSegmentToList(newseg);
     }
 
-    sortSegmentsBySize();
     showSegments();
-/*
-  // FIXME: This is BAD hack
-  imageSize = 0x100000;
-  uint32_t temp = 0;
-  for(i=0; i<imageSize; i+=4){
-    fwrite(&temp,1,4,bin);
-  }
 
-  DP1("Image location is 0x%x.",imageLoc);
-  instr = (uint32_t *)mmap(
-    (caddr_t)imageLoc,
-    imageSize,
-    (PROT_READ | PROT_WRITE | PROT_EXEC),
-    MAP_SHARED,
-    elfFd,
-    0
-  );
-
-  if(instr == (uint32_t *)-1){
-    perror("Could not load image file to memory");
-    return NULL;
-  }
-  DP1("Loaded image file at %p\n",instr);
-
-  for(i=0; i<elfHeader.e_phnum; i++){
-    fseek(elf, elfHeader.e_phoff + i * elfHeader.e_phentsize, SEEK_SET);
-    parseProgramHeader(elf, pProgramHeader);
-
-    inst = (uint8_t *)(pProgramHeader->p_vaddr);
-    fseek(elf, pProgramHeader->p_offset, SEEK_SET);
-    numBytesRead = fread((void *)inst,1,pProgramHeader->p_filesz,elf);
-
-    if(pProgramHeader->p_filesz != 0){
-      DP_ASSERT(numBytesRead != 0,"Encountered file read error\n");
+    /*
+     * Go through the list of segments and for each exclusive segment, perform
+     * an mmap of the size of the segment in memory starting at the virtual
+     * address specified for the segment.
+     */
+    if (mapSegments() == -1) {
+        goto out_unmap;
     }
 
-    for(j=pProgramHeader->p_filesz; j<pProgramHeader->p_memsz; j++){
-      *(inst+j) = 0;
-    }
-  }
-*/
+    /*
+     * Go through all segments, and initialize the mmap-ed space from the
+     * segment information in the elf file.
+     */
+    initSegments();
+
+    entryPoint = (uint32_t *)elfHeader.e_entry;
+    goto out_done;
+
+out_unmap:
+    unmapSegments();
 
 out_freehdr:
     clearSegmentList();
@@ -488,6 +600,7 @@ out_freehdr:
 out_fclose:
     fclose(elf);
 
+out_done:
     debug_out;
     return entryPoint;;
 }
