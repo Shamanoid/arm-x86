@@ -294,9 +294,9 @@ OPCODE_HANDLER_RETURN movHandler(void *pInst);
 OPCODE_HANDLER_RETURN bicHandler(void *pInst);
 OPCODE_HANDLER_RETURN mvnHandler(void *pInst);
 OPCODE_HANDLER_RETURN swiHandler(void *pInst);
-int lsmHandler(void *pInst);
-int lsimmHandler(void *pInst);
-int lsregHandler(void *pInst);
-int brchHandler(void *pInst);
+extern int lsmHandler(void *pInst);
+extern int lsimmHandler(void *pInst);
+extern int lsregHandler(void *pInst);
+extern int brchHandler(void *pInst);
 
 #endif /* _ARMX86_DECODEPRIVATE_H */
