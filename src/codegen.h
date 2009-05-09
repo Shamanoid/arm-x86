@@ -5,12 +5,13 @@ typedef OPCODE_HANDLER_RETURN (*opcodeHandler_t)(void *inst);
 extern opcodeHandler_t opcodeHandler[NUM_OPCODES];
 
 extern void *nextBB;
-extern void callEndBBTaken();
 
 extern uint32_t cpsr;     /* ARM Program Status Register for user mode */
 extern uint32_t x86Flags; /* x86 Flag Register */
 
 extern int32_t regFile[NUM_ARM_REGISTERS];
+
+extern void callEndBBTaken();
 
 #ifndef NOCHAINING
 

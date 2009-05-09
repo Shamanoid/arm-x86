@@ -7,7 +7,6 @@
 #include "ArmX86CodeGen.h"
 #include "codegen.h"
 
-
 void *nextBB;
 
 uint32_t cpsr;     /* ARM Program Status Register for user mode */

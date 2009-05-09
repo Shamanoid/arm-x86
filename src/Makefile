@@ -24,14 +24,14 @@ INC=	ArmX86Types.h	\
 	codegen.h	\
 	ArmX86CodeGen.h	\
 
-OBJ= 	ArmX86$(FLAV).o	\
+OBJ= 	main$(FLAV).o	\
 	ArmX86ElfLoad$(FLAV).o	\
 	alu$(FLAV).o	\
 	ArmX86Decode$(FLAV).o	\
 	ArmX86CodeGen$(FLAV).o	\
 
-ArmX86$(FLAV).o:	ArmX86.c $(INC)
-			$(CC) $(CFLAGS) ArmX86.c -c -o $@
+main$(FLAV).o:		main.c $(INC)
+			$(CC) $(CFLAGS) main.c -c -o $@
 ArmX86Decode$(FLAV).o:	ArmX86Decode.c ArmX86DecodePrivate.h $(INC)
 			$(CC) $(CFLAGS) ArmX86Decode.c -c -o $@
 alu$(FLAV).o:		alu.c ArmX86DecodePrivate.h $(INC)
