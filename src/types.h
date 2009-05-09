@@ -14,4 +14,4 @@ typedef enum{
     TRUE = 1
 } bool;
  
-#endif /* _ARMX86_TYPES_H *
+#endif /* _ARMX86_TYPES_H */
