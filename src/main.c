@@ -1,11 +1,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "ArmX86Decode.h"
-#include "ArmX86Debug.h"
-#include "ArmX86Types.h"
-#include "ArmX86ElfLoad.h"
-#include "ArmX86CodeGen.h"
+#include "decode.h"
+#include "debug.h"
+#include "armx86types.h"
+#include "elfload.h"
+#include "codeenv.h"
 
 void printUsage(void);
 

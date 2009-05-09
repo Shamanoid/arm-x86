@@ -18,28 +18,28 @@ OBJDUMP= objdump
 
 all: 	exec
 
-INC=	ArmX86Types.h	\
-	ArmX86ElfLoad.h	\
-	ArmX86Decode.h	\
+INC=	armx86types.h	\
+	elfload.h	\
+	decode.h	\
 	codegen.h	\
-	ArmX86CodeGen.h	\
+	codeenv.h	\
 
-OBJ= 	main$(FLAV).o	\
-	ArmX86ElfLoad$(FLAV).o	\
-	alu$(FLAV).o	\
-	ArmX86Decode$(FLAV).o	\
-	ArmX86CodeGen$(FLAV).o	\
+OBJ= 	main$(FLAV).o		\
+	elfload$(FLAV).o	\
+	alu$(FLAV).o		\
+	decode$(FLAV).o		\
+	codeenv$(FLAV).o	\
 
 main$(FLAV).o:		main.c $(INC)
 			$(CC) $(CFLAGS) main.c -c -o $@
-ArmX86Decode$(FLAV).o:	ArmX86Decode.c ArmX86DecodePrivate.h $(INC)
-			$(CC) $(CFLAGS) ArmX86Decode.c -c -o $@
-alu$(FLAV).o:		alu.c ArmX86DecodePrivate.h $(INC)
+decode$(FLAV).o:	decode.c decodeprivate.h $(INC)
+			$(CC) $(CFLAGS) decode.c -c -o $@
+alu$(FLAV).o:		alu.c decodeprivate.h $(INC)
 			$(CC) $(CFLAGS) alu.c -c -o $@
-ArmX86ElfLoad$(FLAV).o:ArmX86ElfLoad.c $(INC)
-			$(CC) $(CFLAGS) ArmX86ElfLoad.c -c -o $@
-ArmX86CodeGen$(FLAV).o:ArmX86CodeGen.c $(INC)
-			$(CC) $(CFLAGS) ArmX86CodeGen.c -c -o $@
+elfload$(FLAV).o:	elfload.c $(INC)
+			$(CC) $(CFLAGS) elfload.c -c -o $@
+codeenv$(FLAV).o:	codeenv.c $(INC)
+			$(CC) $(CFLAGS) codeenv.c -c -o $@
 
 exec:	 	$(OBJ)
 		$(CC) $(OBJ) $(LOPTS) -o arm$(FLAV)

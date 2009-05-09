@@ -3,7 +3,7 @@
 
 #include <stdint.h>
 #include <assert.h>
-#include "ArmX86Types.h"
+#include "armx86types.h"
 
 /*
 // Set of macros and global variables to deal with instructions and opcodes 

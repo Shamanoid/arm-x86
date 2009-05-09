@@ -1,10 +1,10 @@
 #include <stdint.h>
 #include <stdlib.h>
-#include "ArmX86Debug.h"
-#include "ArmX86Decode.h"
-#include "ArmX86Types.h"
-#include "ArmX86DecodePrivate.h"
-#include "ArmX86CodeGen.h"
+#include "debug.h"
+#include "decode.h"
+#include "armx86types.h"
+#include "decodeprivate.h"
+#include "codeenv.h"
 #include "codegen.h"
 
 void *nextBB;

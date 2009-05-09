@@ -6,8 +6,8 @@
 #include <sys/mman.h>
 #include <sys/stat.h>
 
-#include "ArmX86Debug.h"
-#include "ArmX86ElfLoad.h"
+#include "debug.h"
+#include "elfload.h"
 
 /* Looking for an ARM executable */
 #define EI_NIDENT 	        16

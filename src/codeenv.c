@@ -1,6 +1,6 @@
 #include <stdint.h>
 #include <stdlib.h>
-#include "ArmX86CodeGen.h"
+#include "codeenv.h"
 
 struct hash_struct *translationCache = NULL;
 

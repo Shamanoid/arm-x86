@@ -1,5 +1,5 @@
-#include "ArmX86Debug.h"
-#include "ArmX86DecodePrivate.h"
+#include "debug.h"
+#include "decodeprivate.h"
 #include "codegen.h"
 
 opcodeHandler_t opcodeHandler[NUM_OPCODES] = {
