@@ -351,6 +351,8 @@ mapSegments()
     struct segment_t *temp = segmentList;
     uintptr_t *addr;
 
+    debug_in;
+
     if (!segmentList) {
         debug(("No segments in list!\n"));
         return 0;
@@ -359,14 +361,22 @@ mapSegments()
     while (temp) {
         if (temp->segType == EXCLUSIVE) {
             debug(("Mapping segment starting at 0x%08x\n", temp->progHdr->p_vaddr));
+            debug(("Segment size: %ld\n", temp->progHdr->p_memsz));
 
             addr = mmap((void *)temp->progHdr->p_vaddr, temp->progHdr->p_memsz,
-	                PROT_READ, MAP_ANONYMOUS | MAP_FIXED, -1, 0);
+	                PROT_READ | PROT_WRITE,
+                        MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED , -1, 0);
 
 	    if (addr == (void *)-1) {
-                sys_err(("Failed to map segment of executable"));
+                sys_err(("mmap: "));
+                info((" \
+                       If you are using Linux kernel 2.6.28 or later, the\n \
+                       kernel might be configured to disallow mmaps at some \n \
+                       addresses. To fix this, do the following as root: \n \
+                        $ echo 0 > /proc/sys/vm/mmap_min_addr\n"));
 		return -1;
 	    } else {
+                debug(("Mapped at %p\n", addr));
 	        temp->segmentMapped = 1;
             }
         }
@@ -374,6 +384,7 @@ mapSegments()
 	temp = temp->next;
     }
 
+    debug_out;
     return 0;
 }
 

@@ -3,7 +3,7 @@
 
 #include "decode.h"
 #include "debug.h"
-#include "armx86types.h"
+#include "types.h"
 #include "elfload.h"
 #include "codeenv.h"
 

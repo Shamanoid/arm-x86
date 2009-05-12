@@ -18,7 +18,7 @@ OBJDUMP= objdump
 
 all: 	exec
 
-INC=	armx86types.h	\
+INC=	types.h		\
 	elfload.h	\
 	decode.h	\
 	codegen.h	\

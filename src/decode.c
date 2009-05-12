@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include "debug.h"
 #include "decode.h"
-#include "armx86types.h"
+#include "types.h"
 #include "decodeprivate.h"
 #include "codeenv.h"
 #include "codegen.h"
