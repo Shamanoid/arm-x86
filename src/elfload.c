@@ -361,7 +361,7 @@ mapSegments()
     while (temp) {
         if (temp->segType == EXCLUSIVE) {
             debug(("Mapping segment starting at 0x%08x\n", temp->progHdr->p_vaddr));
-            debug(("Segment size: %ld\n", temp->progHdr->p_memsz));
+            debug(("Segment size: %u\n", temp->progHdr->p_memsz));
 
             addr = mmap((void *)temp->progHdr->p_vaddr, temp->progHdr->p_memsz,
 	                PROT_READ | PROT_WRITE,
